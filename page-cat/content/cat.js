@@ -52,7 +52,7 @@
     // Boba: black with a white locket on the chest, a white chin, and yellow-green eyes.
     locket: { coat: '#27272c', shade: '#1b1b1f', stripe: '#1b1b1f', eye: '#c5c45a', closed: '#8a8b95' },
     // Moe: brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
-    tabbywhite: { coat: '#7e7466', shade: '#5f574b', stripe: '#2e2a25', eye: '#a4b06a', closed: '#3a342c' },
+    tabbywhite: { coat: '#88735c', shade: '#665443', stripe: '#30261c', eye: '#a4b06a', closed: '#3d3226' },
     // Linda: pale apricot and white with a few smoky patches and faint tail rings.
     pastel: { coat: '#e8bb8c', shade: '#c79a6d', stripe: '#d29a68', eye: '#c7962b', closed: '#8c7660' },
   };
@@ -1285,12 +1285,16 @@
   // the leg and never spill onto the body or the leg in front.
   function legPattern(Lg, pal, far) {
     const pat = settings.pattern;
-    if (pat === 'solid' || pat === 'calico' || pat === 'locket') return;
+    if (pat === 'solid' || pat === 'calico') return;
     const s = S(), w = legWidths(Lg), along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
     const white = far ? '#dcd7cd' : BIB;
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    if (pat === 'pastel') {
+    if (pat === 'locket') {
+      // Boba's white toes: just the paw, with a little white peeking above it.
+      drawPath([along(Lg.D, Lg.P, 0.6), Lg.P], [lerp(w[2], w[3], 0.6), w[3]], white);
+      drawPaw(Lg, white);
+    } else if (pat === 'pastel') {
       // White socks: up past the wrist on the front legs, just the feet behind.
       const u = Lg.front ? 0.25 : 0.8;
       drawPath([along(Lg.K, Lg.D, u), Lg.D, Lg.P], [lerp(w[1], w[2], u), w[2], w[3]], white);
