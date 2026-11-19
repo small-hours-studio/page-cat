@@ -30,7 +30,7 @@
     n.girth = clamp(+n.girth || 1.2, 0.8, 1.8);
     n.activity = clamp(+n.activity, 0, 1);
     if (!COATS[n.coat]) n.coat = 'ginger';
-    if (!BUILTIN_PATTERNS.includes(n.pattern) && !Object.hasOwn(SPECS, n.pattern) && !/^cat:[A-Za-z0-9_-]{1,24}$/.test(n.pattern)) n.pattern = 'solid';
+    if (!BUILTIN_PATTERNS.includes(n.pattern) && !/^cat:[A-Za-z0-9_-]{1,24}$/.test(n.pattern)) n.pattern = 'solid';
     const sizeChanged = n.size !== settings.size;
     Object.assign(settings, n);
     if (sizeChanged && running) scan();
@@ -47,25 +47,12 @@
   // Calico is a white cat with orange and black patches, so it brings its own base coat.
   const CALICO = { coat: '#f6f3ee', shade: '#d8d3ca', stripe: '#d8d3ca', eye: '#c7962b', closed: '#8c867c' };
   const OWN_COAT = { calico: CALICO };
-  const BUILTIN_PATTERNS = ['solid', 'tabby', 'tuxedo', 'calico', 'points'];
+  const BUILTIN_PATTERNS = ['solid', 'tabby', 'tuxedo', 'calico'];
 
   // ---------- cats described as data ----------
   // A cat spec is plain data: { v: 1, n: name, c: [coat, shade, stripe, eye, closed eye], m: markings }.
   // Each marking is [kind, ...numbers, color?], with colors as 6-digit hex without '#'.
-  // Boba, Moe and Linda are built this way; custom cats arrive as signed codes (see popup.js).
-  const SPECS = {
-    // Boba: black with a white locket, a white chin, white toes, and yellow-green eyes.
-    locket: { v: 1, n: 'Boba', c: ['27272c', '1b1b1f', '1b1b1f', 'c5c45a', '8a8b95'],
-      m: [['chest', 0.08, 0.12, 0.5], ['throat', 0.065, 0.075], ['chin', 0.03], ['spot', 2, -0.95, 0, 0.04, 0.025], ['socks', 1.6, 1.6]] },
-    // Moe: brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
-    tabbywhite: { v: 1, n: 'Moe', c: ['88735c', '665443', '30261c', 'a4b06a', '3d3226'],
-      m: [['tabby'], ['chest', 0.1, 0.14, 0.45], ['throat', 0.07, 0.06], ['muzzle', 0.065, 0.05, 0.11], ['blaze'], ['socks', 1.35, 1.35]] },
-    // Linda: pale apricot and white with a few smoky patches and faint tail rings.
-    pastel: { v: 1, n: 'Linda', c: ['e8bb8c', 'c79a6d', 'd29a68', 'c7962b', '8c7660'],
-      m: [['belly', 0.85], ['chest', 0.11, 0.15, 0.3], ['throat', 0.09, 0.07], ['muzzle', 0.1, 0.065, 0.08],
-        ['spot', 2, 0.85, 0.02, 0.07, 0.04, '5d5856'], ['spot', 1, 0.9, -0.04, 0.04, 0.03, '5d5856'], ['face', 0.01, -0.07, 0.04, 0.03, '5d5856'],
-        ['rings', 4, 0.026], ['socks', 0.25, 0.8]] },
-  };
+  // Custom cats arrive as signed codes (see popup.js and tools/catcode.mjs).
   // How many numbers each marking needs (the rest have defaults).
   const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2 };
   const HEX = /^[0-9a-f]{6}$/i;
@@ -84,7 +71,6 @@
     const [coat, shade, stripe, eye, closed] = x.c.map(c => '#' + c.toLowerCase());
     return { name: String(x.n || 'My cat').slice(0, 24), pal: { coat, shade, stripe, eye, closed }, m };
   }
-  const BUILT = Object.fromEntries(Object.entries(SPECS).map(([k, v]) => [k, cleanSpec(v)]));
   let customCats = [];
   function setCats(list) {
     customCats = (Array.isArray(list) ? list : [])
@@ -93,7 +79,6 @@
   }
   function specFor() {
     const p = settings.pattern;
-    if (Object.hasOwn(BUILT, p)) return BUILT[p];
     if (p.startsWith('cat:')) { const c = customCats.find(c => c.id === p.slice(4)); return c ? c.spec : null; }
     return null;
   }
@@ -1323,7 +1308,7 @@
     const rot = Math.atan2(dy, dx) - Math.sign(dx || 1) * Math.PI / 2;
     drawEll(L.P.x + cat.fa * 0.016 * s, L.P.y - 0.017 * s, 0.052 * s, 0.033 * s, clamp(rot * 0.3, -0.5, 0.5), color);
   }
-  function pointColor(pal) { return darken(pal.coat, settings.coat === 'cream' || settings.coat === 'white' ? 0.42 : 0.55); }
+  function pointColor(pal) { return darken(pal.coat, 0.55); }
   // Leg markings are drawn right after their own leg and sized to it, so they ride along with
   // the leg and never spill onto the body or the leg in front.
   const farOf = col => col === BIB ? '#dcd7cd' : darken(col, 0.85);
@@ -1357,7 +1342,6 @@
       }
     } else if (pat === 'tabby') tabbyLeg(Lg, far, pal.stripe);
     else if (pat === 'tuxedo') legFrom(Lg, 0.55, far ? '#dcd7cd' : BIB);
-    else { const c = pointColor(pal); legFrom(Lg, 0.3, far ? darken(c, 0.85) : c); }
     g.restore();
   }
   function earPts(r, near) {
@@ -1488,8 +1472,6 @@
       drawEll(ep.x, ep.y, 0.06 * s, 0.05 * s, r.head.rot, CALICO_ORANGE);
       drawPath(tail.slice(4), tail.slice(4).map(() => 0.09 * s), CALICO_ORANGE);
       drawPath(tail.slice(7), tail.slice(7).map(() => 0.09 * s), CALICO_DARK);
-    } else if (pat === 'points') {
-      pointsBody(r, pointColor(pal));
     }
     g.restore();
   }
@@ -1501,7 +1483,7 @@
     } else {
       const happy = cat.state === 'pet' || cat.state === 'nuzzle';
       const a = headPt(r, 0.028, -0.02), b = headPt(r, 0.09, -0.02), c = headPt(r, 0.059, happy ? -0.05 : 0.01);
-      g.strokeStyle = settings.pattern === 'points' ? '#2a2420' : pal.closed; g.lineWidth = Math.max(1, 0.017 * s); g.lineCap = 'round';
+      g.strokeStyle = pal.closed; g.lineWidth = Math.max(1, 0.017 * s); g.lineCap = 'round';
       g.beginPath(); g.moveTo(a.x, a.y); g.quadraticCurveTo(c.x, c.y, b.x, b.y); g.stroke();
     }
   }
