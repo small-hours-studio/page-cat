@@ -11,7 +11,7 @@ import tempfile
 import urllib.parse
 from pathlib import Path
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 ROOT = Path(__file__).resolve().parent.parent
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -51,7 +51,8 @@ def main():
             tiles.append(crop_cat(a, b))
     photo = None
     if len(sys.argv) > 2:
-        photo = Image.open(sys.argv[2]).convert("RGB")
+        # phone photos are often stored sideways with a rotation tag; apply it
+        photo = ImageOps.exif_transpose(Image.open(sys.argv[2])).convert("RGB")
         photo.thumbnail((330, 330))
     w = 360 * len(tiles) + (photo.width + 20 if photo else 0)
     sheet = Image.new("RGB", (w, 330), BG)
