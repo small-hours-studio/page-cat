@@ -4,7 +4,15 @@ const COATS = [
   ['ginger', '#e3893b', 'Ginger'], ['charcoal', '#34353d', 'Charcoal'], ['bluegray', '#8d97a9', 'Blue-gray'],
   ['cream', '#f1e4cd', 'Cream'], ['white', '#f4f2ed', 'White'], ['brown', '#8a6a4f', 'Brown'],
 ];
-const PATTERNS = [['solid', 'Solid'], ['tabby', 'Tabby'], ['tuxedo', 'Tuxedo'], ['calico', 'Calico'], ['points', 'Colorpoint']];
+const PATTERNS = [['solid', 'Solid'], ['tabby', 'Tabby'], ['tuxedo', 'Tuxedo'], ['calico', 'Calico'], ['points', 'Colorpoint'],
+  ['locket', 'Black with locket'], ['tabbywhite', 'Tabby and white'], ['pastel', 'Pastel calico']];
+// These patterns come with their own colors.
+const OWN_COAT = {
+  calico: 'Calico cats are white with orange and black patches',
+  locket: 'This one is black with a white locket',
+  tabbywhite: 'This one is a brown tabby with white',
+  pastel: 'This one is pale orange and white',
+};
 const MOOD_NAMES = { sleepy: 'Sleepy', chill: 'Chill', playful: 'Playful', hyper: 'Zoomies' };
 
 const $ = id => document.getElementById(id);
@@ -36,8 +44,10 @@ function render() {
   for (const k of ['follow', 'moodCycle', 'pagePlay', 'cursorPlay']) $(k).checked = !!settings[k];
   for (const b of $('coats').children) b.setAttribute('aria-checked', String(b.dataset.v === settings.coat));
   for (const b of $('patterns').children) b.setAttribute('aria-checked', String(b.dataset.v === settings.pattern));
-  $('calicoNote').hidden = settings.pattern !== 'calico';
-  $('coats').style.opacity = settings.pattern === 'calico' ? '0.45' : '';
+  const own = OWN_COAT[settings.pattern];
+  $('calicoNote').hidden = !own;
+  if (own) $('calicoNote').textContent = own + ", so the coat color doesn't apply.";
+  $('coats').style.opacity = own ? '0.45' : '';
   label();
 }
 

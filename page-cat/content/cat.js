@@ -30,7 +30,7 @@
     n.girth = clamp(+n.girth || 1.2, 0.8, 1.8);
     n.activity = clamp(+n.activity, 0, 1);
     if (!COATS[n.coat]) n.coat = 'ginger';
-    if (!['solid', 'tabby', 'tuxedo', 'calico', 'points'].includes(n.pattern)) n.pattern = 'solid';
+    if (!['solid', 'tabby', 'tuxedo', 'calico', 'points', 'locket', 'tabbywhite', 'pastel'].includes(n.pattern)) n.pattern = 'solid';
     const sizeChanged = n.size !== settings.size;
     Object.assign(settings, n);
     if (sizeChanged && running) scan();
@@ -46,8 +46,18 @@
   };
   // Calico is a white cat with orange and black patches, so it brings its own base coat.
   const CALICO = { coat: '#f6f3ee', shade: '#d8d3ca', stripe: '#d8d3ca', eye: '#c7962b', closed: '#8c867c' };
-  const COAT = () => settings.pattern === 'calico' ? CALICO : (COATS[settings.coat] || COATS.ginger);
-  const MUTED = '#8b8f99', HEART = '#e0567a', BIB = '#f7f5f0', CALICO_ORANGE = '#e08a3e', CALICO_DARK = '#2c2c31';
+  // Patterns based on real cats also bring their own colors, so the coat picker doesn't apply to them.
+  const OWN_COAT = {
+    calico: CALICO,
+    // Black with a white locket on the chest, a white chin, and yellow-green eyes.
+    locket: { coat: '#27272c', shade: '#1b1b1f', stripe: '#1b1b1f', eye: '#c5c45a', closed: '#8a8b95' },
+    // Brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
+    tabbywhite: { coat: '#7e7466', shade: '#5f574b', stripe: '#2e2a25', eye: '#a4b06a', closed: '#3a342c' },
+    // Pale apricot and white with a few smoky patches and faint tail rings.
+    pastel: { coat: '#e8bb8c', shade: '#c79a6d', stripe: '#d29a68', eye: '#c7962b', closed: '#8c7660' },
+  };
+  const COAT = () => OWN_COAT[settings.pattern] || COATS[settings.coat] || COATS.ginger;
+  const MUTED = '#8b8f99', HEART = '#e0567a', BIB = '#f7f5f0', CALICO_ORANGE = '#e08a3e', CALICO_DARK = '#2c2c31', SMOKE = '#5d5856';
   function darken(hex, k) {
     const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g2 = (n >> 8) & 255, b = n & 255;
     const f = v => Math.round(v * k).toString(16).padStart(2, '0');
@@ -1275,16 +1285,26 @@
   // the leg and never spill onto the body or the leg in front.
   function legPattern(Lg, pal, far) {
     const pat = settings.pattern;
-    if (pat === 'solid' || pat === 'calico') return;
+    if (pat === 'solid' || pat === 'calico' || pat === 'locket') return;
     const s = S(), w = legWidths(Lg), along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
+    const white = far ? '#dcd7cd' : BIB;
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    if (pat === 'tabby') {
+    if (pat === 'pastel') {
+      // White socks: up past the wrist on the front legs, just the feet behind.
+      const u = Lg.front ? 0.25 : 0.8;
+      drawPath([along(Lg.K, Lg.D, u), Lg.D, Lg.P], [lerp(w[1], w[2], u), w[2], w[3]], white);
+      drawPaw(Lg, white);
+    } else if (pat === 'tabby' || pat === 'tabbywhite') {
       const dx = Lg.D.x - Lg.K.x, dy = Lg.D.y - Lg.K.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
       g.strokeStyle = far ? darken(pal.stripe, 0.85) : pal.stripe; g.lineCap = 'butt'; g.lineWidth = 0.026 * s;
       for (const u of [0.3, 0.65]) {
         const p = along(Lg.K, Lg.D, u), half = lerp(w[1], w[2], u) * 0.5;
         g.beginPath(); g.moveTo(p.x + nx * half, p.y + ny * half); g.lineTo(p.x - nx * half, p.y - ny * half); g.stroke();
+      }
+      if (pat === 'tabbywhite') {
+        drawPath([along(Lg.D, Lg.P, 0.35), Lg.P], [lerp(w[2], w[3], 0.35), w[3]], white);
+        drawPaw(Lg, white);
       }
     } else {
       const col = pat === 'tuxedo' ? (far ? '#dcd7cd' : BIB) : (far ? darken(pointColor(pal), 0.85) : pointColor(pal));
@@ -1333,7 +1353,7 @@
     g.globalCompositeOperation = 'source-atop';
     const line = (a, b, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); };
     const along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
-    if (pat === 'tabby') {
+    if (pat === 'tabby' || pat === 'tabbywhite') {
       const col = pal.stripe;
       for (let i = 0; i < 5; i++) {
         const F = spineFrame(r, i), p = F.p, k = i === 4 ? 0.6 : 1;
@@ -1349,6 +1369,50 @@
       // forehead "M"
       line(headPt(r, -0.02, -0.12), headPt(r, 0.03, -0.06), 0.022 * s, col);
       line(headPt(r, 0.04, -0.13), headPt(r, 0.06, -0.07), 0.022 * s, col);
+      if (pat === 'tabbywhite') {
+        // white bib running up the throat, and a white muzzle with a thin blaze up the nose
+        const F4 = spineFrame(r, 4), ang = Math.atan2(F4.t.y, F4.t.x);
+        drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.45 + F4.t.x * 0.07 * s, F4.p.y - F4.n.y * r.dn[4] * 0.45 + F4.t.y * 0.07 * s, 0.1 * s, 0.14 * s, ang, BIB);
+        const th = { x: lerp(r.chest.x, r.head.x, 0.55), y: lerp(r.chest.y, r.head.y, 0.55) + 0.05 * s };
+        drawEll(th.x + r.fa * 0.04 * s, th.y, 0.07 * s, 0.06 * s, 0, BIB);
+        const m = headPt(r, 0.11, 0.055);
+        drawEll(m.x, m.y, 0.065 * s * (0.6 + 0.4 * af), 0.05 * s, r.head.rot, BIB);
+        line(headPt(r, 0.115, 0.02), headPt(r, 0.1, -0.04), 0.022 * s, BIB);
+      }
+    } else if (pat === 'locket') {
+      // White locket on the chest that narrows up to the throat, a small chin spot, and a fleck on the belly.
+      const F4 = spineFrame(r, 4), F2 = spineFrame(r, 2), ang = Math.atan2(F4.t.y, F4.t.x);
+      drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.5 + F4.t.x * 0.07 * s, F4.p.y - F4.n.y * r.dn[4] * 0.5 + F4.t.y * 0.07 * s, 0.08 * s, 0.12 * s, ang, BIB);
+      const th = { x: lerp(r.chest.x, r.head.x, 0.5), y: lerp(r.chest.y, r.head.y, 0.5) + 0.06 * s };
+      drawEll(th.x + r.fa * 0.05 * s, th.y + 0.02 * s, 0.065 * s, 0.075 * s, 0, BIB);
+      const c = headPt(r, 0.12, 0.075);
+      drawEll(c.x, c.y, 0.03 * s, 0.022 * s, r.head.rot, BIB);
+      drawEll(F2.p.x - F2.n.x * r.dn[2] * 0.95, F2.p.y - F2.n.y * r.dn[2] * 0.95, 0.04 * s, 0.025 * s, Math.atan2(F2.t.y, F2.t.x), BIB);
+    } else if (pat === 'pastel') {
+      // White underside, chest and lower face; a few smoky patches on the back and by one eye; faint tail rings.
+      for (let i = 1; i < 5; i++) {
+        const F = spineFrame(r, i);
+        drawEll(F.p.x - F.n.x * r.dn[i] * 0.85, F.p.y - F.n.y * r.dn[i] * 0.85, 0.13 * s, 0.065 * s + r.dn[i] * 0.25, Math.atan2(F.t.y, F.t.x), BIB);
+      }
+      const F4 = spineFrame(r, 4);
+      drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.3 + F4.t.x * 0.08 * s, F4.p.y - F4.n.y * r.dn[4] * 0.3 + F4.t.y * 0.08 * s, 0.11 * s, 0.15 * s, Math.atan2(F4.t.y, F4.t.x), BIB);
+      const th = { x: lerp(r.chest.x, r.head.x, 0.55), y: lerp(r.chest.y, r.head.y, 0.55) + 0.04 * s };
+      drawEll(th.x + r.fa * 0.03 * s, th.y, 0.09 * s, 0.07 * s, 0, BIB);
+      const m = headPt(r, 0.08, 0.05);
+      drawEll(m.x, m.y, 0.1 * s * (0.6 + 0.4 * af), 0.065 * s, r.head.rot, BIB);
+      const patch = (i, v, du, rx, ry) => {
+        const F = spineFrame(r, i);
+        drawEll(F.p.x + F.n.x * v * s + F.t.x * du * s, F.p.y + F.n.y * v * s + F.t.y * du * s, rx * s, ry * s, Math.atan2(F.t.y, F.t.x), SMOKE);
+      };
+      patch(2, 0.1, 0.02, 0.07, 0.04);
+      patch(1, 0.11, -0.04, 0.04, 0.03);
+      const e = headPt(r, 0.01, -0.07);
+      drawEll(e.x, e.y, 0.04 * s, 0.03 * s, r.head.rot, SMOKE);
+      for (let i = 4; i < TAIL_N; i += 2) {
+        const p = tail[i], q = tail[i - 1], tx = p.x - q.x, ty = p.y - q.y, l = Math.hypot(tx, ty) || 1;
+        const nx = -ty / l, ny = tx / l;
+        line({ x: p.x + nx * 0.07 * s, y: p.y + ny * 0.07 * s }, { x: p.x - nx * 0.07 * s, y: p.y - ny * 0.07 * s }, 0.026 * s, pal.stripe);
+      }
     } else if (pat === 'tuxedo') {
       const F3 = spineFrame(r, 3), F4 = spineFrame(r, 4);
       // bib on the chest and a white belly
