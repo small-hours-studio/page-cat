@@ -32,7 +32,7 @@ Open <https://chrome.google.com/webstore/devconsole> in Chrome. Files are relati
 
 ## 4. Distribution tab
 - **Payments:** Free.
-- **Visibility:** Unlisted.
+- **Visibility:** Public.
 - **Regions:** All regions.
 - Click **Save draft**.
 
