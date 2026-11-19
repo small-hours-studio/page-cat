@@ -58,7 +58,7 @@ async function createOrder(request, env) {
   let cats;
   try { cats = JSON.parse(form.get('cats') || '[]'); } catch (e) { cats = []; }
   if (!Array.isArray(cats) || cats.length < 1 || cats.length > 3) throw httpError(400, 'Choose one, two or three cats.');
-  const prices = String(env.PRICES || '300,400,500').split(',').map(Number);
+  const prices = String(env.PRICES || '300,500,600').split(',').map(Number);
   const id = randomId(12), key = randomId(24);
   const catRecords = [];
   for (let i = 0; i < cats.length; i++) {

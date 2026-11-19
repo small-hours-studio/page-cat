@@ -29,8 +29,8 @@
     <h2>How many cats?</h2>
     <div class="chips" role="radiogroup" aria-label="How many cats" id="count">
       <div class="chip" role="radio" tabindex="0" data-n="1" aria-checked="true"><b>$3</b><span>1 cat</span></div>
-      <div class="chip" role="radio" tabindex="-1" data-n="2" aria-checked="false"><b>$4</b><span>2 cats</span></div>
-      <div class="chip" role="radio" tabindex="-1" data-n="3" aria-checked="false"><b>$5</b><span>3 cats</span></div>
+      <div class="chip" role="radio" tabindex="-1" data-n="2" aria-checked="false"><b>$5</b><span>2 cats</span></div>
+      <div class="chip" role="radio" tabindex="-1" data-n="3" aria-checked="false"><b>$6</b><span>3 cats</span></div>
     </div>
 
     <div id="cats"></div>
@@ -66,7 +66,7 @@
   // ?api= is for local testing only, so a crafted link can't send orders anywhere else
   const testApi = new URLSearchParams(location.search).get('api') || '';
   const API = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(testApi) ? testApi : window.ORDER_API;
-  const PRICES = ['$3', '$4', '$5'];
+  const PRICES = ['$3', '$5', '$6'];
   const $ = id => document.getElementById(id);
   let count = 1;
   const photos = []; // photos[cat][label] = Blob
