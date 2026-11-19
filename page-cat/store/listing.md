@@ -20,7 +20,7 @@ Its mood changes over the day. Most of the time it's sleepy or relaxed, and once
 
 You can pick its size, how chunky it is, a coat color, and a coat pattern. If you don't want it playing with the page or following your mouse, you can turn those off.
 
-Click the toolbar button to bring the cat to the page you're on, or set it to show up on every site. Alt+Shift+C brings it over or sends it away. Click the cat to pet it.
+The cat follows you when you switch tabs, hopping in from the side your last tab was on. Click the toolbar button to send it away or call it back, or press Alt+Shift+C. Click the cat to pet it.
 
 Page Cat doesn't collect any data and never connects to the internet. Your settings stay in your browser.
 
@@ -29,9 +29,8 @@ Displays an animated cat companion on top of web pages the user chooses.
 
 ## Permission justifications (Privacy practices tab)
 - storage: Saves the user's cat settings (size, coat, pattern, activity) and the list of sites where the user has hidden the cat.
-- activeTab: Lets the user call the cat onto the current tab by clicking the toolbar button or pressing the shortcut, without granting access to other sites.
-- scripting: Injects the cat's drawing script into the current tab when the user calls it, and registers it for all sites only if the user turns on "Show on every site".
-- Host permission (<all_urls>, optional): Requested only when the user turns on "Show on every site", so the cat can appear on each page they open. Off by default.
+- scripting: Adds the cat's script to tabs that were already open when the extension was installed, so the cat can follow the user to them.
+- Host permission (<all_urls>): The cat is drawn on top of whatever page the user is viewing and follows them from tab to tab, so the script needs to run on any site. It only reads the size and position of page elements to find places to walk; it collects nothing and makes no network requests. Users can turn following off or hide the cat on any site from the popup.
 - Remote code: No. All code ships in the package.
 
 ## Data usage (Privacy practices tab)

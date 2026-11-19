@@ -1660,20 +1660,24 @@
     tail.forEach(p => { p.x = cat.rig.hip.x; p.y = cat.rig.hip.y; });
     for (let k = 0; k < 30; k++) updateTail(0.05, cat.rig);
   }
-  function show() {
+  // side: 'left' or 'right' when the cat is coming over from another tab on that side.
+  function show(side) {
     if (running) return;
     if (!alive()) return;
     running = true;
     if (!host.isConnected) document.documentElement.appendChild(host);
     host.style.display = 'block';
     viewport(); resizeCanvas(); scan();
-    if (!cat.plat || cat.plat.gone) {
-      // Arrive at the bottom of the window and wander in.
-      const fromLeft = rand() < 0.5, s = S();
+    if (side || !cat.plat || cat.plat.gone) {
+      // Come in at the bottom edge of the window, then leap up onto the page (or wander in).
+      const fromLeft = side ? side === 'left' : rand() < 0.5, s = S();
       placeCat(floor, fromLeft ? 0.3 * s : W - 0.3 * s);
       cat.f = cat.fa = fromLeft ? 1 : -1;
       placeCat(floor, cat.x);
-      goWalk(rr(0.25, 0.75) * W);
+      cat.zoomLeft = 0; cat.intent = null;
+      const j = side ? scrollHop() : null;
+      if (j) { cat.plan = j; cat.f = Math.sign(j.lx - cat.x) || cat.f; setState('crouch', 0.08); }
+      else goWalk(rr(0.25, 0.75) * W);
     }
     last = performance.now();
     rafId = requestAnimationFrame(frame);
@@ -1687,18 +1691,35 @@
   }
   function teardown() { hide(); host.remove(); }
 
+  // The cat's mood and energy travel with it from tab to tab.
+  function snapshot() { return { mood: mood.name, moodT: mood.t, moodV: mood.v, energy: cat.energy }; }
+  function applyState(st) {
+    if (!st) return;
+    if (st.mood && MOODS[st.mood]) { mood.name = st.mood; mood.t = st.moodT; mood.v = st.moodV; }
+    if (Number.isFinite(st.energy)) cat.energy = st.energy;
+  }
+
   if (hasChrome) {
     chrome.runtime.onMessage.addListener((msg, sender, reply) => {
       if (!msg || typeof msg.type !== 'string' || !msg.type.startsWith('pagecat:')) return;
-      if (msg.type === 'pagecat:show') show();
+      if (msg.type === 'pagecat:leave') { const state = snapshot(); hide(); reply({ visible: false, state }); return; }
+      if (msg.type === 'pagecat:arrive') { if (!running) { applyState(msg.state); show(msg.side || undefined); } }
+      else if (msg.type === 'pagecat:show') show();
       else if (msg.type === 'pagecat:hide') hide();
-      else if (msg.type === 'pagecat:toggle') { if (running) hide(); else show(); }
       reply({ visible: running, mood: settings.moodCycle ? mood.name : null });
     });
-    chrome.storage.sync.get(['pagecat', 'pagecatBlocked'], res => {
+    chrome.storage.sync.get(['pagecat'], res => {
       applySettings(res.pagecat);
-      const blocked = (res.pagecatBlocked || []).includes(location.hostname);
-      if (!blocked && !window.__pageCatManual) show();
+      // Ask the background whether the cat is on this tab (it follows you between tabs).
+      if (!window.__pageCatManual) {
+        chrome.runtime.sendMessage({ type: 'pagecat:hello' }).then(r => {
+          if (r && r.show && !running) { applyState(r.state); show(); }
+        }).catch(() => {});
+      }
+    });
+    // Leaving the page (navigating): hand the cat's mood to the background for the next page.
+    addEventListener('pagehide', () => {
+      if (running && alive()) { try { chrome.runtime.sendMessage({ type: 'pagecat:state', state: snapshot() }).catch(() => {}); } catch (e) { /* extension reloaded */ } }
     });
     chrome.storage.onChanged.addListener((ch, area) => {
       if (area !== 'sync') return;

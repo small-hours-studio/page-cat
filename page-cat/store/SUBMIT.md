@@ -23,9 +23,8 @@ Open <https://chrome.google.com/webstore/devconsole> in Chrome. Files are relati
 - **Single purpose:** `Displays an animated cat companion on top of web pages the user chooses.`
 - **Permission justifications:** paste each one from "Permission justifications" in `store/listing.md`:
   - storage
-  - activeTab
   - scripting
-  - Host permission (the optional all-sites access)
+  - Host permission (all sites)
 - **Are you using remote code?** No.
 - **Data usage:** leave every data type unchecked. Tick all three certifications.
 - **Privacy policy URL:** `https://tsassypants.github.io/page-cat/privacy.html`

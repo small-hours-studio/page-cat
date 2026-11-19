@@ -20,7 +20,7 @@ Work computers often block Developer mode; test at home, or ask IT. Installing f
 | `manifest.json` | Extension manifest. |
 | `content/cat.js` | The cat: simulation, drawing, and reading the page. Runs in the tab. |
 | `popup.html`, `popup.css`, `popup.js` | The menu that opens from the toolbar button. |
-| `background.js` | Keyboard shortcut, and keeping "Show on every site" in sync with the permission. |
+| `background.js` | Keeps track of the one cat and moves it to whichever tab you're on; keyboard shortcut. |
 | `shared.js` | Defaults and helpers used by the popup and background. |
 | `icons/` | Toolbar and store icons (`python tools/make_icons.py` redraws them). |
 | `store/` | Store listing text and the promo tile (`python tools/make_store_art.py`). |
@@ -29,7 +29,7 @@ Work computers often block Developer mode; test at home, or ask IT. Installing f
 
 ## How it behaves on real pages
 
-- It only appears where you call it (toolbar button or **Alt+Shift+C**), unless you turn on **Show on every site**. That switch asks Chrome for access to all sites; it is off by default.
+- There is one cat. With **Follow me to every tab** on (the default), it moves to whichever tab you're looking at and hops in from the side your previous tab was on, keeping its mood and energy. The toolbar button or **Alt+Shift+C** sends it away or calls it back. **Never show on this site** keeps it off a site.
 - It draws in its own overlay (a closed shadow root) and never changes page content. The one exception is play: it may hide one small image or short word in place and chase a copy, then put the original back. It also puts it back on scroll, on tab switch, and when you hide the cat.
 - It skips form fields, editable areas and code blocks, and it doesn't run inside iframes.
 - It hides during full-screen video and slows its frame rate while resting.
@@ -46,7 +46,7 @@ Work computers often block Developer mode; test at home, or ask IT. Installing f
    - **Store listing**: description, category, icon, promo tile and screenshots. Text is in `store/listing.md`.
    - **Privacy practices**: single purpose, a justification for each permission, "no remote code", and the data-use certification. All of it is in `store/listing.md`. Paste the privacy policy URL.
    - **Distribution**: choose **Public**, or **Unlisted** if only people with the link should find it.
-6. **Submit for review.** Reviews usually take from a day to a few weeks. Requesting access to all sites (even as optional) can lengthen review; the justification text addresses it.
+6. **Submit for review.** Reviews usually take from a day to a few weeks. Access to all sites can lengthen review; the justification text addresses it.
 7. **Updates.** Bump `version` in `manifest.json`, rebuild the zip, and upload it on the item's **Package** tab.
 
 ### Getting it onto work computers

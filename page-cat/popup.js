@@ -1,4 +1,4 @@
-import { DEFAULTS, ALL_SITES, canVisit, tellTab, syncRegistration } from './shared.js';
+import { DEFAULTS, canVisit, hostOf } from './shared.js';
 
 const COATS = [
   ['ginger', '#e3893b', 'Ginger'], ['charcoal', '#34353d', 'Charcoal'], ['bluegray', '#8d97a9', 'Blue-gray'],
@@ -33,7 +33,7 @@ function render() {
   $('size').value = settings.size;
   $('girth').value = settings.girth;
   $('activity').value = settings.activity;
-  for (const k of ['moodCycle', 'pagePlay', 'cursorPlay']) $(k).checked = !!settings[k];
+  for (const k of ['follow', 'moodCycle', 'pagePlay', 'cursorPlay']) $(k).checked = !!settings[k];
   for (const b of $('coats').children) b.setAttribute('aria-checked', String(b.dataset.v === settings.coat));
   for (const b of $('patterns').children) b.setAttribute('aria-checked', String(b.dataset.v === settings.pattern));
   $('calicoNote').hidden = settings.pattern !== 'calico';
@@ -67,21 +67,16 @@ function setVisible(visible, mood) {
   if (visible && mood && MOOD_NAMES[mood]) { m.hidden = false; m.textContent = MOOD_NAMES[mood]; } else m.hidden = true;
 }
 
-function hostOf(url) { try { return new URL(url).hostname; } catch (e) { return ''; } }
-
 async function init() {
   buildPickers();
-  const store = await chrome.storage.sync.get(['pagecat', 'pagecatAlways', 'pagecatBlocked']);
+  const store = await chrome.storage.sync.get(['pagecat', 'pagecatBlocked']);
   settings = { ...DEFAULTS, ...(store.pagecat || {}) };
   render();
-
-  const always = !!store.pagecatAlways && await chrome.permissions.contains(ALL_SITES);
-  $('always').checked = always;
 
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const host = tab ? hostOf(tab.url) : '';
   $('host').textContent = host || 'this site';
-  $('siteRow').hidden = !always || !host;
+  $('siteRow').hidden = !host || !canVisit(tab.url);
   $('site').checked = (store.pagecatBlocked || []).includes(host);
 
   if (!tab || !canVisit(tab.url)) {
@@ -96,32 +91,17 @@ async function init() {
   } catch (e) { setVisible(false); }
 }
 
+// The background keeps track of the one cat, so calling it here also takes it off its old tab.
 $('summon').addEventListener('click', async () => {
   if (!tab) return;
-  try {
-    const r = await tellTab(tab.id, 'pagecat:toggle');
-    setVisible(!!(r && r.visible), r && r.mood);
-  } catch (e) {
+  const r = await chrome.runtime.sendMessage({ type: 'pagecat:toggleTab', tabId: tab.id }).catch(() => null);
+  if (!r || r.error) {
     $('note').hidden = false;
     $('note').textContent = "The cat can't get onto this page.";
+    return;
   }
-});
-
-$('always').addEventListener('change', async e => {
-  const on = e.target.checked;
-  if (on) {
-    // The permission prompt can close this popup, so record the choice first; the background
-    // worker finishes the setup when the permission arrives (and undoes it if it never does).
-    const asked = chrome.permissions.request(ALL_SITES);
-    chrome.storage.sync.set({ pagecatAlways: true });
-    const ok = await asked;
-    if (!ok) { e.target.checked = false; await chrome.storage.sync.set({ pagecatAlways: false }); return; }
-  } else {
-    try { await chrome.permissions.remove(ALL_SITES); } catch (err) { /* already gone */ }
-  }
-  await chrome.storage.sync.set({ pagecatAlways: on });
-  await syncRegistration();
-  $('siteRow').hidden = !on || !hostOf(tab && tab.url);
+  const s = r.visible ? await chrome.tabs.sendMessage(tab.id, { type: 'pagecat:status' }).catch(() => null) : null;
+  setVisible(!!r.visible, s && s.mood);
 });
 
 $('site').addEventListener('change', async e => {
@@ -137,7 +117,7 @@ $('site').addEventListener('change', async e => {
 for (const id of ['size', 'girth', 'activity']) {
   $(id).addEventListener('input', e => { settings[id] = +e.target.value; label(); save(); });
 }
-for (const id of ['moodCycle', 'pagePlay', 'cursorPlay']) {
+for (const id of ['follow', 'moodCycle', 'pagePlay', 'cursorPlay']) {
   $(id).addEventListener('change', e => { settings[id] = e.target.checked; label(); save(); });
 }
 $('reset').addEventListener('click', () => { settings = { ...DEFAULTS }; render(); save(); });

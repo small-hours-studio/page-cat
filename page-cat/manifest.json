@@ -18,8 +18,11 @@
       "32": "icons/icon32.png"
     }
   },
-  "permissions": ["storage", "activeTab", "scripting"],
-  "optional_host_permissions": ["<all_urls>"],
+  "permissions": ["storage", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    { "matches": ["<all_urls>"], "js": ["content/cat.js"], "run_at": "document_idle", "all_frames": false }
+  ],
   "background": { "service_worker": "background.js", "type": "module" },
   "commands": {
     "toggle-cat": {

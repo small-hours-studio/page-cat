@@ -19,8 +19,7 @@ To decide where the cat can walk, Page Cat reads the size and position of elemen
 ## Permissions
 
 - **storage**: saves your cat settings.
-- **activeTab** and **scripting**: let the cat onto the tab you're on when you click the toolbar button or press the shortcut.
-- **All sites (optional, off by default)**: only requested if you turn on "Show on every site", so the cat can appear on each page you open.
+- **All sites** and **scripting**: let the cat appear on the page you're viewing and follow you from tab to tab. On each page it only reads where elements are, to find places to walk. You can turn following off, or keep the cat off any site, from the toolbar menu.
 
 ## Contact
 
