@@ -3,7 +3,7 @@
   "name": "Page Cat",
   "short_name": "Page Cat",
   "version": "0.1.1",
-  "description": "A little cat that lives on the websites you visit. It walks around, naps, scratches, and sometimes chases your mouse.",
+  "description": "A little procedurally animated cat that lives on the websites you visit. It walks, naps, scratches, and sometimes chases your mouse.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

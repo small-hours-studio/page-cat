@@ -6,7 +6,7 @@ Paste these into the Developer Dashboard. Edit freely.
 Page Cat
 
 ## Summary (132 characters max)
-A little cat that lives on the websites you visit. It walks around, naps, scratches, and sometimes chases your mouse.
+A little procedurally animated cat that lives on the websites you visit. It walks, naps, scratches, and sometimes chases your mouse.
 
 ## Category
 Fun
