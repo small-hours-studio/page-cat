@@ -1,0 +1,1802 @@
+<title>Cat Style Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control strip, one wide stage running the soft-silhouette cat, then notes on the gait. */
+:root {
+  --bg: #f2f3f6;
+  --fg: #1c1e26;
+  --muted: #5d6170;
+  --card: #ffffff;
+  --line: #e0e2e9;
+  --accent: #c46d17;
+  --accent-soft: #fbefe2;
+  --heart: #e0567a;
+  --mock-bg: #ffffff;
+  --mock-nav: #eef0f4;
+  --mock-block: #c6cbd6;
+  --mock-line: #e2e5ec;
+  --mock-img: #dfe5ee;
+  --mock-img2: #c4cddb;
+  --mock-btn: #5674c9;
+  --mock-btn-ink: #e6ecfb;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #13151a; --fg: #e7e8ee; --muted: #9a9fad; --card: #1b1e25; --line: #2b2f39;
+    --accent: #eb9a43; --accent-soft: #2e2418; --heart: #ef6d8f;
+    --mock-bg: #181a20; --mock-nav: #22252d; --mock-block: #3b404c; --mock-line: #2b2f38;
+    --mock-img: #272c36; --mock-img2: #343b48; --mock-btn: #4b67b8; --mock-btn-ink: #c8d3f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #13151a; --fg: #e7e8ee; --muted: #9a9fad; --card: #1b1e25; --line: #2b2f39;
+  --accent: #eb9a43; --accent-soft: #2e2418; --heart: #ef6d8f;
+  --mock-bg: #181a20; --mock-nav: #22252d; --mock-block: #3b404c; --mock-line: #2b2f38;
+  --mock-img: #272c36; --mock-img2: #343b48; --mock-btn: #4b67b8; --mock-btn-ink: #c8d3f0;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+.wrap {
+  max-width: 1100px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 36px 56px;
+  display: flex; flex-direction: column; gap: 24px;
+}
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 4vw, 42px); line-height: 1.08; letter-spacing: -0.02em; margin: 6px 0 10px; text-wrap: balance; }
+.lede { max-width: 66ch; color: var(--muted); margin: 0; }
+.hint { margin: 10px 0 0; font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.hint span { white-space: nowrap; }
+.hint b { font-weight: 600; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: flex-end; padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.ctl { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.ctl-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+input[type="range"] { accent-color: var(--accent); width: 140px; max-width: 100%; }
+output { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; min-width: 4.5ch; }
+#activityOut, #girthOut { min-width: 9ch; }
+.btn { font: 500 13px/1 var(--font-body); color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible, input[type="range"]:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.swatch { position: relative; }
+.swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.swatch label { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 5px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: 13px; }
+.swatch .dot { width: 16px; height: 16px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+.swatch input:checked + label { border-color: var(--accent); background: var(--accent-soft); }
+.swatch input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+.status { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin: -12px 0 -12px; height: 1.6em; line-height: 1.6em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+
+.stage { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; height: 340px; touch-action: manipulation; }
+
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px 26px; padding-top: 4px; }
+.notes > h2 { grid-column: 1 / -1; font-family: var(--font-display); font-size: 22px; font-weight: 600; margin: 0; }
+.note { min-width: 0; }
+.note h3 { font-family: var(--font-display); font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+.note p { margin: 0; color: var(--muted); font-size: 14px; }
+.foot { font-size: 13px; color: var(--muted); margin: 0; }
+</style>
+
+<main class="wrap">
+  <header>
+    <p class="eyebrow">Web cat · soft silhouette</p>
+    <h1>A cat that lives on the page</h1>
+    <p class="lede">The soft-silhouette cat with a cat's real joints, footfall order and jumps. Mostly it does its own thing, but now and then it hunts your cursor, steals a small icon or word off the page to play with, or scratches something.</p>
+    <p class="hint"><span><b>Leave your cursor resting</b> just above a gray block or the floor; now and then the cat notices.</span><span><b>Click</b> the cat to pet it.</span><span><b>Click a gray block</b> to call it over.</span><span><b>Slow it to 0.3×</b> with the skeleton on to study the motion.</span></p>
+  </header>
+
+  <section class="controls" aria-label="Cat controls">
+    <div class="ctl">
+      <span class="ctl-label">Size</span>
+      <div class="row">
+        <input type="range" id="size" min="24" max="120" step="2" value="72" aria-label="Cat size">
+        <output id="sizeOut" for="size">72px</output>
+        <button class="btn" id="realSize" type="button">Real size (32px)</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Speed</span>
+      <div class="row">
+        <input type="range" id="speed" min="0.1" max="2" step="0.1" value="1" aria-label="Animation speed">
+        <output id="speedOut" for="speed">1.0×</output>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Girth</span>
+      <div class="row">
+        <input type="range" id="girth" min="0.8" max="1.8" step="0.05" value="1.2" aria-label="How chunky the cat is">
+        <output id="girthOut" for="girth">Sturdy</output>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Activity</span>
+      <div class="row">
+        <input type="range" id="activity" min="0" max="1" step="0.05" value="0.5" aria-label="How active the cat is">
+        <output id="activityOut" for="activity">Easygoing</output>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Coat</span>
+      <div class="swatches" role="radiogroup" aria-label="Coat color">
+        <div class="swatch"><input type="radio" name="coat" id="coat-ginger" value="ginger" checked><label for="coat-ginger"><span class="dot" style="--c:#e3893b"></span>Ginger</label></div>
+        <div class="swatch"><input type="radio" name="coat" id="coat-charcoal" value="charcoal"><label for="coat-charcoal"><span class="dot" style="--c:#34353d"></span>Charcoal</label></div>
+        <div class="swatch"><input type="radio" name="coat" id="coat-bluegray" value="bluegray"><label for="coat-bluegray"><span class="dot" style="--c:#8d97a9"></span>Blue-gray</label></div>
+        <div class="swatch"><input type="radio" name="coat" id="coat-cream" value="cream"><label for="coat-cream"><span class="dot" style="--c:#f1e4cd"></span>Cream</label></div>
+        <div class="swatch"><input type="radio" name="coat" id="coat-white" value="white"><label for="coat-white"><span class="dot" style="--c:#f4f2ed"></span>White</label></div>
+        <div class="swatch"><input type="radio" name="coat" id="coat-brown" value="brown"><label for="coat-brown"><span class="dot" style="--c:#8a6a4f"></span>Brown</label></div>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Pattern</span>
+      <div class="swatches" role="radiogroup" aria-label="Coat pattern">
+        <div class="swatch"><input type="radio" name="pattern" id="pat-solid" value="solid" checked><label for="pat-solid">Solid</label></div>
+        <div class="swatch"><input type="radio" name="pattern" id="pat-tabby" value="tabby"><label for="pat-tabby">Tabby</label></div>
+        <div class="swatch"><input type="radio" name="pattern" id="pat-tuxedo" value="tuxedo"><label for="pat-tuxedo">Tuxedo</label></div>
+        <div class="swatch"><input type="radio" name="pattern" id="pat-calico" value="calico"><label for="pat-calico">Calico</label></div>
+        <div class="swatch"><input type="radio" name="pattern" id="pat-points" value="points"><label for="pat-points">Colorpoint</label></div>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label">Make it</span>
+      <div class="row">
+        <button class="btn" id="doWalk" type="button">Walk</button>
+        <button class="btn" id="doJump" type="button">Jump</button>
+        <button class="btn" id="doGroom" type="button">Groom</button>
+        <button class="btn" id="doNap" type="button">Nap</button>
+        <button class="btn" id="doWake" type="button">Wake</button>
+        <button class="btn" id="doPlay" type="button">Play with page</button>
+        <button class="btn" id="doScratch" type="button">Scratch</button>
+        <button class="btn" id="doZoom" type="button">Zoomies</button>
+      </div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="skel"> Show skeleton</label>
+  </section>
+
+  <p class="status" id="status" aria-live="off">Sitting</p>
+
+  <section class="stage">
+    <canvas id="stage" aria-label="A soft-silhouette cat walking around a mock web page"></canvas>
+  </section>
+
+  <section class="notes">
+    <h2>How it moves</h2>
+    <div class="note"><h3>Body and legs</h3><p>A deep chest, a tucked waist and a round rump. The thigh and upper arm sit inside the body, so only the lower legs show, the way they do on a real cat.</p></div>
+    <div class="note"><h3>Gaits change with speed</h3><p>Walking follows a cat's real footfall order (left hind, left front, right hind, right front). Faster, it trots in diagonal pairs. Flat out, it gallops: hind paws land, then front, the spine bunches and stretches, and all four paws leave the ground.</p></div>
+    <div class="note"><h3>Jumps</h3><p>It wiggles, aims at the spot, and launches. The body tilts along the arc, the head leads, the front paws reach for the edge, and the front lands first.</p></div>
+    <div class="note"><h3>Cursor play</h3><p>Mostly the cat does its own thing. Once in a while a resting cursor catches its eye: it stalks low, wiggles and pounces, or, if the cursor is at head height, walks over and rubs its head on it. Then it ignores you for a good while.</p></div>
+    <div class="note"><h3>Page play</h3><p>Now and then it swats a small icon or a short word off the page and hunts it like a mouse. The item darts, freezes, jinks, and hides behind the cards at the bottom, peeking out until the cat paws it loose. It tires as it runs, so long chases end in a catch. Then the item floats back to its exact spot.</p></div>
+    <div class="note"><h3>Scratching</h3><p>It rears up against the side of the window or a card and pulls down slowly with alternating paws, or rakes along a flat surface. Claw marks are drawn on the cat's own layer only; the page is untouched.</p></div>
+    <div class="note"><h3>Coats and patterns</h3><p>Six coat colors and five patterns: solid, tabby (stripes, tail rings, forehead "M"), tuxedo (white bib, belly, muzzle and socks), calico (white with orange and black patches; it ignores the coat color) and colorpoint (darker face, ears, legs and tail). Patterns are painted only onto the cat, so they move with every pose.</p></div>
+    <div class="note"><h3>Activity</h3><p>Chill cats mostly sit, groom and loaf. Active cats get the zoomies (darting in random directions, leaping onto things, pouncing on nothing, grabbing toys mid-run) and hunt page items and your cursor far more often.</p></div>
+  </section>
+  <p class="foot">Enlarged so you can judge the motion. On real pages the cat would be about 32px long; use “Real size” to see it.</p>
+</main>
+
+<script>
+(() => {
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const damp = (k, dt) => 1 - Math.exp(-k * dt);
+  const frac = v => v - Math.floor(v);
+  const smooth = u => u * u * (3 - 2 * u);
+  const rand = Math.random;
+  const rr = (a, b) => a + (b - a) * rand();
+
+  const canvas = document.getElementById('stage');
+  const stageCtx = canvas.getContext('2d');
+  let ctx = stageCtx; // swapped to the cat's own layer while the cat is drawn, so patterns stay on the cat
+  const layer = document.createElement('canvas');
+  const lctx = layer.getContext('2d');
+  const STAGE_H = 340;
+
+  const settings = { size: 72, speed: 1, coat: 'ginger', pattern: 'solid', skel: false, activity: 0.5, girth: 1.2 };
+  const S = () => settings.size;
+  const COATS = {
+    ginger:   { coat: '#e3893b', shade: '#b8662a', stripe: '#b25b1f', eye: '#2b1c10', closed: '#5a2c0e' },
+    charcoal: { coat: '#34353d', shade: '#24252b', stripe: '#1b1c20', eye: '#f0c64e', closed: '#9a9ba5' },
+    bluegray: { coat: '#8d97a9', shade: '#6b7487', stripe: '#5f687b', eye: '#1f2330', closed: '#3e4556' },
+    cream:    { coat: '#f1e4cd', shade: '#cdbc9f', stripe: '#cfae82', eye: '#3a2f25', closed: '#8a7457' },
+    white:    { coat: '#f4f2ed', shade: '#d6d1c8', stripe: '#d2cbbf', eye: '#3d6db0', closed: '#9a958c' },
+    brown:    { coat: '#8a6a4f', shade: '#6b4f3a', stripe: '#4e3826', eye: '#e2b84a', closed: '#3a2a1d' },
+  };
+  const BIB = '#f7f5f0', CALICO_ORANGE = '#e08a3e', CALICO_DARK = '#2c2c31';
+  function darken(hex, k) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, gg = (n >> 8) & 255, b = n & 255;
+    const f = v => Math.round(v * k).toString(16).padStart(2, '0');
+    return '#' + f(r) + f(gg) + f(b);
+  }
+  // Calico is a white cat with orange and black patches, so it brings its own base coat.
+  const CALICO = { coat: '#f6f3ee', shade: '#d8d3ca', stripe: '#d8d3ca', eye: '#c7962b', closed: '#8c867c' };
+  const COAT = () => settings.pattern === 'calico' ? CALICO : COATS[settings.coat];
+
+  let W = 600, H = STAGE_H, dpr = 1, T = 0;
+  let plats = [];
+  let items = [];   // small page elements the cat may steal and play with
+  let prey = null;  // the item currently being played with
+  let theme = {};
+  const mouse = { x: 0, y: 0, active: false, sx: 0, sy: 0, stillSince: performance.now() };
+
+  // ---------- page + platforms ----------
+  function buildPlatforms() {
+    plats = [
+      { id: 'floor',   label: 'window bottom', x0: 0,        x1: W,        y: H - 10,               h: 10 },
+      { id: 'heading', label: 'heading',       x0: W * 0.06, x1: W * 0.48, y: Math.round(H * 0.30), h: 16 },
+      { id: 'image',   label: 'image',         x0: W * 0.60, x1: W * 0.94, y: Math.round(H * 0.40), h: Math.round(H * 0.32) },
+      { id: 'button',  label: 'button',        x0: W * 0.06, x1: W * 0.30, y: Math.round(H * 0.68), h: 22 },
+      // Little cards along the bottom (a cookie notice and a help widget): prey can hide behind them.
+      { id: 'cookie',  label: 'cookie card',   x0: W * 0.03, x1: W * 0.2,  y: H - 10 - 40,          h: 40, card: true },
+      { id: 'help',    label: 'help card',     x0: W * 0.8,  x1: W * 0.96, y: H - 10 - 52,          h: 52, card: true },
+    ];
+    const fl = plats[0], hd = plats[1], im = plats[2], bt = plats[3];
+    const word = (id, text, plat, hx) => ({ id, shape: 'word', text, w: text.length * 7 + 4, h: 12, plat, hx });
+    items = [
+      { id: 'icon',   shape: 'square', w: 14, h: 14, plat: im, hx: im.x1 - 24 },
+      { id: 'tag',    shape: 'chip',   w: 30, h: 11, plat: hd, hx: hd.x1 - 28 },
+      { id: 'avatar', shape: 'circle', w: 13, h: 13, plat: fl, hx: W * 0.42 },
+      word('w-news', 'news', fl, W * 0.72),
+      word('w-more', 'more', bt, bt.x1 - 26),
+    ];
+  }
+  function drawItem(it, cx, by, rot) {
+    const c = theme, w = it.w, h = it.h;
+    ctx.save(); ctx.translate(cx, by - h / 2); ctx.rotate(rot);
+    if (it.shape === 'square') { rrect(-w / 2, -h / 2, w, h, 3, c.mockBtn); rrect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 1.5, c.mockBtnInk); }
+    else if (it.shape === 'chip') { rrect(-w / 2, -h / 2, w, h, h / 2, c.mockBlock); rrect(-w / 2 + 6, -1.5, w - 12, 3, 1.5, c.mockBg); }
+    else if (it.shape === 'word') {
+      ctx.fillStyle = c.muted; ctx.font = '600 12px Inter, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(it.text, 0, 0.5);
+      ctx.textAlign = 'start'; ctx.textBaseline = 'alphabetic';
+    }
+    else {
+      ctx.fillStyle = c.mockImg2; ctx.beginPath(); ctx.arc(0, 0, w / 2, 0, TAU); ctx.fill();
+      ctx.fillStyle = c.mockBg; ctx.beginPath(); ctx.arc(0, -1.5, w * 0.2, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawItems() {
+    for (const it of items) {
+      if (!it.borrowed) { drawItem(it, it.hx, it.plat.y, 0); continue; }
+      // While borrowed, the item's spot on the page stays open (the original is only hidden).
+      ctx.save(); ctx.setLineDash([2, 2]); ctx.strokeStyle = theme.muted; ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
+      ctx.strokeRect(it.hx - it.w / 2 + 0.5, it.plat.y - it.h + 0.5, it.w - 1, it.h - 1); ctx.restore();
+    }
+    if (prey) drawItem(prey.item, prey.x, prey.y, prey.rot);
+  }
+  // The element being scratched jiggles a little.
+  function jig(id) {
+    const hit = (cat.state === 'scratch' && cat.plat && cat.plat.id === id) || (cat.state === 'wallscratch' && cat.wall && cat.wall.id === id);
+    return hit ? Math.sin(T * 30) * 0.6 : 0;
+  }
+  const maxUp = () => 3.6 * S() + 40;
+  const maxX = () => 4.5 * S() + 60;
+
+  function readTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const g = k => cs.getPropertyValue(k).trim();
+    theme = {
+      mockBg: g('--mock-bg'), mockNav: g('--mock-nav'), mockBlock: g('--mock-block'), mockLine: g('--mock-line'),
+      mockImg: g('--mock-img'), mockImg2: g('--mock-img2'), mockBtn: g('--mock-btn'), mockBtnInk: g('--mock-btn-ink'),
+      accent: g('--accent'), muted: g('--muted'), heart: g('--heart'),
+    };
+  }
+  function rrect(x, y, w, h, r, col) {
+    ctx.fillStyle = col; ctx.beginPath();
+    r = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill();
+  }
+  function drawPage() {
+    const c = theme;
+    ctx.fillStyle = c.mockBg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = c.mockNav; ctx.fillRect(0, 0, W, 28);
+    ctx.fillStyle = c.mockBlock; ctx.beginPath(); ctx.arc(18, 14, 6, 0, TAU); ctx.fill();
+    for (let k = 0; k < 3; k++) rrect(W - 16 - (k + 1) * 40 + 6, 11, 30, 6, 3, c.mockLine);
+    const hd = plats[1], im = plats[2], bt = plats[3];
+    rrect(hd.x0 + jig('heading'), hd.y, hd.x1 - hd.x0, 16, 4, c.mockBlock);
+    const widths = [1, .93, .97, .88, .95, .62];
+    for (let y = hd.y + 30, i = 0; y < bt.y - 14; y += 12, i++) rrect(hd.x0, y, (hd.x1 - hd.x0) * widths[i % 6], 6, 3, c.mockLine);
+    ctx.save(); ctx.translate(jig('image'), 0);
+    rrect(im.x0, im.y, im.x1 - im.x0, im.h, 6, c.mockImg);
+    ctx.clip();
+    const iw = im.x1 - im.x0;
+    ctx.fillStyle = c.mockImg2; ctx.beginPath();
+    ctx.moveTo(im.x0, im.y + im.h); ctx.lineTo(im.x0 + iw * .35, im.y + im.h * .45); ctx.lineTo(im.x0 + iw * .55, im.y + im.h * .7);
+    ctx.lineTo(im.x0 + iw * .75, im.y + im.h * .5); ctx.lineTo(im.x1, im.y + im.h * .8); ctx.lineTo(im.x1, im.y + im.h); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(im.x0 + iw * .76, im.y + im.h * .24, Math.min(iw, im.h) * .09, 0, TAU); ctx.fill();
+    ctx.restore();
+    const bj = jig('button');
+    rrect(bt.x0 + bj, bt.y, bt.x1 - bt.x0, bt.h, 6, c.mockBtn);
+    rrect(bt.x0 + 12 + bj, bt.y + 8, bt.x1 - bt.x0 - 24, 6, 3, c.mockBtnInk);
+    ctx.fillStyle = c.mockLine; ctx.fillRect(0, plats[0].y, W, 1);
+    drawItems();
+    // Cards are drawn after the items, so prey that slips behind one is hidden by it.
+    for (const p of plats) {
+      if (!p.card) continue;
+      const j = jig(p.id), w = p.x1 - p.x0;
+      rrect(p.x0 + j - 1, p.y - 1, w + 2, p.h + 2, 9, c.mockBlock);
+      rrect(p.x0 + j, p.y, w, p.h, 8, c.mockNav);
+      rrect(p.x0 + 10 + j, p.y + 10, w * 0.6, 5, 2.5, c.mockLine);
+      rrect(p.x0 + 10 + j, p.y + 20, w * 0.4, 5, 2.5, c.mockLine);
+      rrect(p.x1 - 34 + j, p.y + p.h - 16, 24, 9, 4.5, c.mockBtn);
+    }
+  }
+
+  // ---------- poses ----------
+  // aF: front distal angle (+ = wrist ahead of paw, paw folding back). aH: hind distal angle (+ = hock behind paw).
+  const POSES = {
+    stand:   { hipH: .42, chestH: .41, len: 1,   curl: 0, headFwd: 0,    headDrop: 0,    arch: .025, fr: .02, hr: 0,    aF: .12,  aH: .3 },
+    walk:    { hipH: .41, chestH: .39, len: 1,   curl: 0, headFwd: .03,  headDrop: .035, arch: .02,  fr: .02, hr: 0,    aF: .12,  aH: .3 },
+    sit:     { hipH: .15, chestH: .45, len: .5,  curl: 0, headFwd: -.02, headDrop: -.02, arch: -.02, fr: .05, hr: .19,  aF: .05,  aH: 1.45, rump: 1 },
+    crouch:  { hipH: .25, chestH: .23, len: .95, curl: 0, headFwd: .03,  headDrop: .06,  arch: .05,  fr: .05, hr: -.02, aF: .45,  aH: .9 },
+    stretch: { hipH: .45, chestH: .15, len: 1.1, curl: 0, headFwd: .06,  headDrop: .15,  arch: -.06, fr: .3,  hr: -.04, aF: -.25, aH: .2 },
+    sleep:   { hipH: .10, chestH: .10, len: .8,  curl: 1, headFwd: 0,    headDrop: 0,    arch: 0,    fr: .02, hr: .06,  aF: 1.6,  aH: 1.45 },
+    stalk:   { hipH: .28, chestH: .21, len: 1.05, curl: 0, headFwd: .08, headDrop: .1,   arch: .04,  fr: .03, hr: 0,    aF: .3,   aH: .65 },
+    scratch: { hipH: .42, chestH: .2,  len: 1.05, curl: 0, headFwd: .04, headDrop: .1,   arch: -.05, fr: .2,  hr: -.02, aF: -.1,  aH: .25 },
+    loaf:    { hipH: .13, chestH: .15, len: .85,  curl: 0, headFwd: -.01, headDrop: .02, arch: .02,  fr: .06, hr: .05,  aF: 1.6,  aH: 1.45, lie: 1, rump: .3 },
+    run:     { hipH: .37, chestH: .34, len: 1.08, curl: 0, headFwd: .06, headDrop: .06,  arch: .05,  fr: .03, hr: 0,    aF: .2,   aH: .4 },
+    // Reared up against a wall: haunches low, body near vertical, front paws high on the surface.
+    wall:    { hipH: .2,  chestH: .64, len: .38,  curl: 0, headFwd: -.03, headDrop: -.08, arch: -.03, fr: .2, hr: .06,  aF: .2,   aH: 1.05, rump: .4 },
+  };
+  Object.values(POSES).forEach(p => { if (p.rump == null) p.rump = 0; if (p.lie == null) p.lie = 0; });
+  const TAILP = {
+    idle:    { elev: 1.25, curl: .07,  sway: .3,  sf: 1.6 },
+    walk:    { elev: 1.1,  curl: .045, sway: .08, sf: 2.5 },
+    sit:     { elev: -1.3, curl: -.3,  sway: .25, sf: 1.6 },
+    sleep:   { elev: -1.4, curl: -.3,  sway: .05, sf: 1.0 },
+    air:     { elev: .25,  curl: .02,  sway: 0,   sf: 1.0 },
+    crouch:  { elev: .2,   curl: 0,    sway: .9,  sf: 9.0 },
+    stretch: { elev: 1.45, curl: .05,  sway: .2,  sf: 2.0 },
+    pet:     { elev: 1.5,  curl: .12,  sway: .3,  sf: 1.2 },
+    stalk:   { elev: .12,  curl: .02,  sway: .45, sf: 6.0 },
+    wall:    { elev: -.15, curl: .06,  sway: .25, sf: 1.4 },
+  };
+
+  // ---------- gait ----------
+  // Feet: 0 near front, 1 far front, 2 near hind, 3 far hind.
+  // Lateral-sequence walk: near hind -> near front -> far hind -> far front.
+  // FWD: share of the stance spent ahead of the shoulder/hip. Cats plant just in front and push well back.
+  let DUTY = 0.62, STRIDE = 0.66;
+  let FWD = [0.36, 0.36, 0.44, 0.44], OFFS = [0.75, 0.25, 0, 0.5], GLIFT = 1;
+  // Cats change gait with speed. Walk: lateral sequence (near hind, near front, far hind, far front).
+  // Trot: diagonal pairs move together. Gallop: hind pair lands, then front pair, with a suspended
+  // phase and a spine that flexes and extends with every stride.
+  const GAITS = {
+    walk:   { duty: 0.62, stride: 0.66, offs: [0.75, 0.25, 0, 0.5],    fwd: [0.36, 0.36, 0.44, 0.44], lift: 1 },
+    trot:   { duty: 0.46, stride: 0.92, offs: [0, 0.5, 0.5, 0],         fwd: [0.4, 0.4, 0.46, 0.46],   lift: 1.1 },
+    gallop: { duty: 0.3,  stride: 1.3,  offs: [0.56, 0.66, 0, 0.1],     fwd: [0.55, 0.55, 0.62, 0.62], lift: 1.3 },
+  };
+  const LEG = {
+    front: { upper: 0.2,  lower: 0.19, distal: 0.06, w: [0.15, 0.085, 0.062, 0.052], lift: 0.095 },
+    hind:  { upper: 0.19, lower: 0.2,  distal: 0.13, w: [0.25, 0.12, 0.068, 0.052], lift: 0.075 },
+  };
+  let gaitPhase = 0, gaitOn = false;
+
+  const TAIL_N = 10;
+  const feet = [0, 1, 2, 3].map(() => ({ x: 0, y: 0, ang: 0.2, swing: false, u: 0, dur: .2, sx: 0, sy: 0, a0: 0, a1: 0, amp: 1, lift: 0, walkStep: false, raised: false }));
+  const tail = Array.from({ length: TAIL_N }, () => ({ x: 0, y: 0 }));
+  const parts = [];
+  const cat = {
+    x: 0, y: 0, plat: null, vx: 0, vy: 0, f: 1, fa: 1, state: 'sit', timer: 3, tx: 0, plan: null, air: null,
+    energy: 0.85, pose: { ...POSES.sit }, tp: { ...TAILP.sit }, lookOff: { x: 0, y: 0 }, tilt: 0,
+    glance: null, glanceT: 1, behindT: 0, blink: 0, blinkT: 2.5, ear: 0, earT: 3, groom: 0, groomIn: -1,
+    zT: 0, heartT: 0, rig: null, pitch: 0, airBlend: 0,
+    intent: null, nuzzleBlend: 0, interestT: 1, cool: 2, landPounce: false,
+    preyCool: 8, zoomLeft: 0, swatItem: null, swatDone: false,
+  };
+
+  function poseKey() {
+    switch (cat.state) {
+      case 'walk': return 'walk';
+      case 'stalk': return 'stalk';
+      case 'chase': return cat.gait === 'gallop' ? 'run' : 'walk';
+      case 'zoom': return 'run';
+      case 'swat': return 'stand';
+      case 'wallscratch': return 'wall';
+      case 'bat': return 'crouch';
+      case 'scratch': return 'scratch';
+      case 'loaf': return 'loaf';
+      case 'probe': return 'stalk';
+      case 'sit': case 'pet': return 'sit';
+      case 'crouch': return 'crouch';
+      case 'land': return cat.timer > 0.12 ? 'crouch' : 'stand';
+      case 'stretch': return 'stretch';
+      case 'sleep': return 'sleep';
+      default: return 'stand';
+    }
+  }
+  function tailKey() {
+    switch (cat.state) {
+      case 'walk': return 'walk';
+      case 'sit': return 'sit';
+      case 'pet': case 'nuzzle': return 'pet';
+      case 'stalk': return 'stalk';
+      case 'chase': return 'walk';
+      case 'zoom': return 'air';
+      case 'swat': case 'bat': return 'crouch';
+      case 'loaf': return 'sit';
+      case 'probe': return 'crouch';
+      case 'wallscratch': return 'wall';
+      case 'sleep': return 'sleep';
+      case 'air': return 'air';
+      case 'crouch': return 'crouch';
+      case 'stretch': return 'stretch';
+      default: return 'idle';
+    }
+  }
+
+  // ---------- behavior ----------
+  // Slider position -> how lively the cat is. Curved so the middle (Easygoing) stays calm.
+  function actLevel() { return Math.pow(settings.activity, 1.7); }
+  function setState(st, timer = 0) {
+    cat.state = st; cat.timer = timer;
+    if (st !== 'sit') { cat.groom = 0; cat.groomIn = -1; }
+    if (!['walk', 'stalk', 'crouch', 'air', 'land', 'chase', 'zoom'].includes(st)) cat.intent = null;
+  }
+  function platformUnder(x, y) {
+    let best = null, bd = 1e9;
+    for (const p of plats) {
+      if (x < p.x0 || x > p.x1) continue;
+      const gap = p.y - y;
+      if (gap >= -4 && gap < bd) { bd = gap; best = p; }
+    }
+    return best;
+  }
+  function planJump(Q, lx) {
+    const s = S(), P = cat.plat, m = 0.4 * s;
+    if (P.y - Q.y > maxUp()) return null;
+    const dir = Math.sign(lx - cat.x) || cat.f;
+    let tx = clamp(lx - dir * 0.9 * s, P.x0 + m, P.x1 - m);
+    if (Math.abs(lx - tx) > maxX()) tx = clamp(lx - Math.sign(lx - tx) * maxX() * 0.9, P.x0 + m, P.x1 - m);
+    if (Math.abs(lx - tx) > maxX()) return null;
+    return { to: Q, lx, tx };
+  }
+  // A cursor that rests near a surface is interesting: stalk-and-pounce it, or go head-bump it.
+  function mouseInterest(force) {
+    if (!mouse.active || (!force && cat.cool > 0) || !cat.plat || prey) return false;
+    if ((performance.now() - mouse.stillSince) / 1000 < (force ? 0.8 : 2.5)) return false;
+    const s = S(), a = actLevel();
+    const tp = platformUnder(mouse.x, mouse.y);
+    if (!tp) return false;
+    const gap = tp.y - mouse.y;
+    if (gap > 1.0 * s || overCat(mouse)) return false;
+    // Mostly the cat minds its own business; only now and then does the cursor win.
+    if (!force && rand() > 0.04 + 0.3 * a) return false;
+    const mode = gap > 0.25 * s && gap < 0.85 * s && rand() < 0.5 ? 'nuzzle' : 'hunt';
+    const stamp = mouse.stillSince, m = 0.35 * s, dir = Math.sign(mouse.x - cat.x) || cat.f;
+    if (tp !== cat.plat) {
+      const lx = clamp(mouse.x - dir * (mode === 'hunt' ? 1.5 : 0.45) * s, tp.x0 + m, tp.x1 - m);
+      const j = planJump(tp, lx);
+      if (!j) return false;
+      cat.plan = j; cat.intent = null; goWalk(j.tx);
+      return true;
+    }
+    cat.cool = rr(20, 40) * (1.4 - 0.6 * a);
+    cat.plan = null;
+    if (mode === 'nuzzle') {
+      cat.intent = { kind: 'nuzzle', stamp };
+      goWalk(clamp(mouse.x - dir * 0.4 * s, tp.x0 + m, tp.x1 - m));
+      return true;
+    }
+    cat.intent = { kind: 'hunt', stamp };
+    cat.tx = clamp(mouse.x - dir * 1.5 * s, tp.x0 + m, tp.x1 - m);
+    if (Math.abs(cat.tx - cat.x) < 0.1 * s) arrive(); else { cat.f = Math.sign(cat.tx - cat.x) || cat.f; setState('stalk'); }
+    return true;
+  }
+  function pick(opts) {
+    let r = rand() * opts.reduce((a, o) => a + o[1], 0);
+    for (const o of opts) { r -= o[1]; if (r <= 0) return o[0]; }
+    return opts[0][0];
+  }
+  function jumpOptions() {
+    const s = S(), P = cat.plat, m = 0.4 * s, out = [];
+    for (const Q of plats) {
+      if (Q === P || Q.x1 - Q.x0 < 2 * m) continue;
+      if (P.y - Q.y > maxUp()) continue;
+      let lx = rr(Q.x0 + m, Q.x1 - m);
+      if (Math.abs(lx - cat.x) > maxX()) lx = clamp(cat.x + Math.sign(lx - cat.x) * rr(1, 3) * s, Q.x0 + m, Q.x1 - m);
+      const dir = Math.sign(lx - cat.x) || cat.f;
+      let tx = clamp(lx - dir * rr(0.6, 1.6) * s, P.x0 + m, P.x1 - m);
+      if (Math.abs(lx - tx) > maxX()) tx = clamp(lx - Math.sign(lx - tx) * maxX() * 0.9, P.x0 + m, P.x1 - m);
+      if (Math.abs(lx - tx) > maxX()) continue;
+      out.push({ to: Q, lx, tx });
+    }
+    return out;
+  }
+  function walkSomewhere() {
+    const s = S(), P = cat.plat, m = 0.4 * s;
+    for (let k = 0; k < 8; k++) {
+      const tx = rr(P.x0 + m, P.x1 - m);
+      if (Math.abs(tx - cat.x) > 1.5 * s) { cat.plan = null; goWalk(tx); return true; }
+    }
+    return false;
+  }
+  // Chill cats sit, groom and loaf; active cats zoom, jump, hunt and play.
+  function decide() {
+    cat.plan = null;
+    if (prey && prey.mode !== 'return' && prey.mode !== 'caught') { setState('chase'); return; }
+    if (cat.intent && cat.intent.kind === 'grab') {
+      const it = cat.intent.item; cat.intent = null;
+      if (!it.borrowed && !prey) { goGrab(it); return; }
+    }
+    if (cat.zoomLeft > 0) { zoomStep(); return; }
+    if (mouseInterest()) return;
+    const a = actLevel(), lazy = 1.7 - a, P = cat.plat, s = S();
+    const jumps = jumpOptions(), toys = playCandidates();
+    const opts = [
+      ['walk', 1.4 * (0.25 + 1.2 * a)], ['sit', 2.4 * (1.3 - a)], ['loaf', 2.5 * (1.3 - a)],
+      ['idle', 1.0 * (1.2 - 0.6 * a)], ['stretch', 0.4],
+      ['scratch', P.id === 'floor' ? 0.25 : 0.5],
+      ['sleep', (cat.energy < 0.3 ? 4 : 0.35) * (1.8 - 1.5 * a)],
+    ];
+    if (jumps.length) opts.push(['jump', 1.6 * (0.15 + 1.6 * a)]);
+    if (P.x1 - P.x0 > 5 * s) opts.push(['zoom', 1.8 * Math.pow(a, 1.5)]);
+    if (toys.length) opts.push(['play', 2.4 * Math.pow(a, 1.5) + 0.1]);
+    const st = pick(opts);
+    if (st === 'walk') { if (!walkSomewhere()) setState('idle', rr(1, 2)); }
+    else if (st === 'jump') { cat.plan = jumps[Math.floor(rand() * jumps.length)]; goWalk(cat.plan.tx); }
+    else if (st === 'sit') { setState('sit', rr(4, 8) * lazy); if (rand() < 0.45) cat.groomIn = rr(0.8, 1.6); }
+    else if (st === 'loaf') setState('loaf', rr(8, 16) * lazy);
+    else if (st === 'idle') setState('idle', rr(1.2, 2.6) * lazy);
+    else if (st === 'stretch') setState('stretch', 1.8);
+    else if (st === 'scratch') goScratch();
+    else if (st === 'zoom') { cat.zoomLeft = 4 + Math.floor(rand() * 4); zoomStep(); }
+    else if (st === 'play') goGrab(toys[Math.floor(rand() * toys.length)]);
+    else setState('sleep', rr(9, 15) * lazy);
+  }
+  function goZoom() {
+    const s = S(), P = cat.plat, m = 0.4 * s;
+    let tx = cat.x;
+    for (let k = 0; k < 8; k++) { tx = rr(P.x0 + m, P.x1 - m); if (Math.abs(tx - cat.x) > 2.2 * s) break; }
+    if (Math.abs(tx - cat.x) < 1.2 * s) tx = (cat.x - P.x0 > P.x1 - cat.x) ? P.x0 + m : P.x1 - m;
+    cat.tx = tx; cat.f = Math.sign(tx - cat.x) || cat.f;
+    setState('zoom');
+  }
+  // Zoomies: dash somewhere random, then maybe leap onto something, pounce on nothing,
+  // go after the cursor, or snatch a toy off the page.
+  function zoomStep() {
+    if (cat.zoomLeft-- <= 0) { cat.zoomLeft = 0; setState('idle', rr(1.5, 2.5)); return; }
+    const s = S(), P = cat.plat, r = rand();
+    if (r < 0.15) {
+      const z = cat.zoomLeft; cat.zoomLeft = 0;
+      if (mouseInterest(true)) return;
+      cat.zoomLeft = z;
+    } else if (r < 0.32) {
+      const toys = playCandidates(true);
+      if (toys.length) { cat.zoomLeft = 0; goGrab(toys[Math.floor(rand() * toys.length)]); return; }
+    } else if (r < 0.58) {
+      const j = jumpOptions();
+      if (j.length) { cat.plan = j[Math.floor(rand() * j.length)]; goWalk(cat.plan.tx); return; }
+    } else if (r < 0.76) {
+      const lx = clamp(cat.x + cat.f * rr(1, 2) * s, P.x0 + 0.3 * s, P.x1 - 0.3 * s);
+      if (Math.abs(lx - cat.x) > 0.6 * s) { cat.plan = { to: P, lx, tx: cat.x, pounce: true, zoomy: true }; setState('crouch', rr(0.15, 0.3)); return; }
+    }
+    goZoom();
+  }
+
+  // ---------- scratching ----------
+  // Vertical surfaces the cat can rear up against from where it stands: the sides of the
+  // browser window and the sides of the cards standing on the floor.
+  function wallsFor(P) {
+    if (P.id !== 'floor') return [];
+    const out = [{ id: 'win-left', x: 0, dir: -1, h: 999 }, { id: 'win-right', x: W, dir: 1, h: 999 }];
+    for (const c of plats) if (c.card) out.push({ id: c.id, x: c.x0, dir: 1, h: c.h }, { id: c.id, x: c.x1, dir: -1, h: c.h });
+    return out;
+  }
+  function goScratch() {
+    const s = S(), P = cat.plat;
+    const ws = wallsFor(P).filter(w => { const sx = w.x - w.dir * 0.34 * s; return sx > P.x0 + 0.25 * s && sx < P.x1 - 0.25 * s; });
+    if (ws.length && rand() < 0.75) {
+      const w = ws[Math.floor(rand() * ws.length)];
+      cat.intent = { kind: 'wall', wall: w }; cat.plan = null;
+      goWalk(w.x - w.dir * 0.34 * s);
+      return;
+    }
+    setState('scratch', rr(3, 5));
+  }
+
+  // ---------- page items as prey ----------
+  function playCandidates(force) {
+    if (prey || (!force && cat.preyCool > 0) || !cat.plat) return [];
+    return items.filter(it => !it.borrowed && (it.plat === cat.plat || planJump(it.plat, it.hx)));
+  }
+  function goGrab(it) {
+    const s = S(), m = 0.4 * s, P = it.plat, dir = Math.sign(it.hx - cat.x) || cat.f;
+    cat.intent = { kind: 'grab', item: it };
+    if (P !== cat.plat) {
+      const j = planJump(P, clamp(it.hx - dir * 0.7 * s, P.x0 + m, P.x1 - m));
+      if (!j) { cat.intent = null; setState('idle', 1); return; }
+      cat.plan = j; goWalk(j.tx); return;
+    }
+    // Stand so the near front paw can reach it.
+    let tx = it.hx - dir * 0.42 * s;
+    if (tx < P.x0 + 0.25 * s || tx > P.x1 - 0.25 * s) tx = it.hx + dir * 0.42 * s;
+    cat.plan = null; goWalk(clamp(tx, P.x0 + 0.25 * s, P.x1 - 0.25 * s));
+  }
+  function pounceAt(p) {
+    const s = S(), P = cat.plat, m = 0.3 * s;
+    cat.f = Math.sign(p.x - cat.x) || cat.f;
+    cat.plan = { to: P, lx: clamp(p.x, P.x0 + m, P.x1 - m), tx: cat.x, pounce: true, prey: true, reach: { x: p.x, y: p.y - 0.06 * s } };
+    setState('crouch', rr(0.25, 0.5));
+  }
+  // Play is over (caught, or it got away): the item floats back to its exact spot on the page.
+  function sendHome() {
+    if (!prey || prey.mode === 'return') return;
+    Object.assign(prey, { mode: 'return', t: 0, rx: prey.x, ry: prey.y, rrot: prey.rot });
+    cat.preyCool = rr(40, 70) * (1.4 - 0.6 * actLevel());
+  }
+  function updatePrey(dt) {
+    if (!prey) return;
+    const s = S(), p = prey;
+    p.life += dt;
+    if (p.mode === 'return') {
+      p.t += dt / 0.9;
+      const u = Math.min(1, p.t), e = smooth(u);
+      p.x = lerp(p.rx, p.item.hx, e); p.y = lerp(p.ry, p.item.plat.y, e) - Math.sin(Math.PI * u) * 0.6 * s; p.rot = lerp(p.rrot, 0, e);
+      if (u >= 1) { p.item.borrowed = false; prey = null; }
+      return;
+    }
+    if (p.mode === 'caught') { p.rot = Math.sin(p.life * 30) * 0.15; return; }
+    if (p.life > 32) { sendHome(); return; } // it got away
+    if (p.mode === 'fly') {
+      const py = p.y;
+      p.vy += 30 * s * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vx * dt * 0.04;
+      if (p.x < 6 || p.x > W - 6) { p.vx = -p.vx * 0.6; p.x = clamp(p.x, 6, W - 6); }
+      if (p.vy > 0) {
+        const q = platformUnder(p.x, py);
+        if (q && p.y >= q.y) {
+          p.y = q.y; p.plat = q;
+          if (p.vy > 6 * s) p.vy *= -0.3;
+          else { p.vy = 0; p.vx = 0; p.mode = 'pause'; p.t = rr(0.2, 0.5); p.rot = 0; }
+        }
+      }
+      return;
+    }
+    // On the ground it acts like a mouse: dart, freeze, jink, and make for cover.
+    // Energy runs down as it runs, so a long chase ends with a tired, catchable prey.
+    const e = p.energy;
+    const dc = p.x - cat.x, away = Math.sign(dc) || 1;
+    const near = Math.abs(dc) < 1.4 * s && Math.abs(cat.y - p.y) < 0.6 * s;
+    p.t -= dt; p.hidCool = Math.max(0, p.hidCool - dt);
+    const bolt = (dir, fast) => {
+      p.mode = 'run'; p.t = rr(0.4, 1.0) * (0.6 + 0.6 * e);
+      p.vx = dir * rr(2.0, 3.2) * s * (fast ? 1.15 : 1) * (0.7 + 0.4 * e);
+    };
+    if (p.mode === 'pause') {
+      p.rot = 0;
+      if (p.t <= 0 || (near && rand() < dt * (3 + 4 * e))) {
+        const spots = p.hidCool > 0 ? [] : hideSpots(p.plat);
+        if (spots.length && rand() < 0.15 + 0.4 * e) {
+          // Make for the nearest cover, preferring cover that isn't past the cat.
+          const cost = q => Math.abs((q.x0 + q.x1) / 2 - p.x) + (Math.sign((q.x0 + q.x1) / 2 - p.x) !== away ? 2 * s : 0);
+          const sp = spots.reduce((b, q) => cost(q) < cost(b) ? q : b);
+          p.hide = sp; p.mode = 'tohide';
+          p.hx = clamp((sp.x0 + sp.x1) / 2 + rr(-0.2, 0.2) * (sp.x1 - sp.x0), sp.x0 + 10, sp.x1 - 10);
+          p.vx = (Math.sign(p.hx - p.x) || 1) * 3.0 * s * (0.75 + 0.35 * e);
+        } else {
+          bolt(rand() < 0.8 ? away : -away, near);
+          if (rand() < 0.15) { p.mode = 'fly'; p.vy = -rr(0.8, 1.3) * s; }
+        }
+      }
+    } else if (p.mode === 'run') {
+      p.x += p.vx * dt; p.rot = Math.sin(p.life * 40) * 0.12;
+      p.energy = Math.max(0, e - dt * 0.045);
+      // Jink: a sudden reversal when the cat closes in head-on.
+      if (near && Math.sign(p.vx) !== away && rand() < dt * 3) p.vx = -p.vx;
+      if (p.x < p.plat.x0 + 4 || p.x > p.plat.x1 - 4) {
+        if (p.plat.id === 'floor' || rand() < 0.5) { p.vx = -p.vx; p.x = clamp(p.x, p.plat.x0 + 4, p.plat.x1 - 4); }
+        else { p.mode = 'fly'; p.vy = -0.3 * s; } // scurries off the edge
+      }
+      if (p.t <= 0 && p.mode === 'run') { p.mode = 'pause'; p.t = rr(0.25, 0.8) * (1.6 - e); }
+    } else if (p.mode === 'tohide') {
+      p.x += p.vx * dt; p.rot = Math.sin(p.life * 40) * 0.12;
+      if (Math.sign(p.hx - p.x) !== Math.sign(p.vx)) { p.x = p.hx; p.vx = 0; p.mode = 'hide'; p.t = rr(2, 4.5); p.peekT = rr(0.6, 1.2); p.peeking = false; }
+    } else if (p.mode === 'hide') {
+      // Tucked behind the card, now and then peeking out past one edge.
+      const sp = p.hide;
+      p.rot = 0; p.peekT -= dt;
+      if (p.peekT <= 0) { p.peeking = !p.peeking; p.peekT = p.peeking ? rr(0.4, 0.8) : rr(0.8, 1.6); p.peekSide = rand() < 0.5 ? -1 : 1; }
+      const tx = p.peeking ? (p.peekSide < 0 ? sp.x0 - 3 : sp.x1 + 3) : p.hx;
+      p.x += (tx - p.x) * damp(8, dt);
+      p.energy = Math.min(1, e + dt * 0.04);
+      if (p.t <= 0) { p.hidCool = 4; bolt(Math.sign(p.x - cat.x) || 1, true); }
+    }
+  }
+  // Cover on a surface: cards that stand on it.
+  function hideSpots(P) {
+    return plats.filter(b => b.card && b.x0 < P.x1 && b.x1 > P.x0 && b.y < P.y && b.y + b.h >= P.y - 1);
+  }
+  function flushPrey() {
+    if (!prey || prey.mode !== 'hide') return;
+    const s = S(), dir = Math.sign(prey.x - cat.x) || 1;
+    prey.mode = 'run'; prey.t = rr(0.5, 0.9); prey.hidCool = 3;
+    prey.vx = dir * rr(2.6, 3.4) * s * (0.7 + 0.4 * prey.energy);
+  }
+  function goWalk(tx) {
+    cat.tx = tx;
+    if (Math.abs(tx - cat.x) < 0.05 * S()) { cat.x = tx; arrive(); return; }
+    setState(cat.zoomLeft > 0 ? 'zoom' : 'walk');
+  }
+  function arrive() {
+    if (cat.state === 'zoom' && !cat.plan) { zoomStep(); return; }
+    if (cat.plan) { cat.f = Math.sign(cat.plan.lx - cat.x) || cat.f; setState('crouch', cat.plan.pounce ? rr(0.9, 1.5) : 0.6); return; }
+    const it = cat.intent;
+    if (it && it.kind === 'wall') {
+      cat.f = it.wall.dir; cat.wall = it.wall;
+      setState('wallscratch', rr(3.5, 5.5));
+      return;
+    }
+    if (it && it.kind === 'grab') {
+      const item = it.item;
+      if (item.borrowed || prey) { cat.intent = null; decide(); return; }
+      if (item.plat !== cat.plat) { goGrab(item); return; }
+      cat.f = Math.sign(item.hx - cat.x) || cat.f;
+      cat.swatItem = item; cat.swatDone = false;
+      setState('swat', 0.8);
+      return;
+    }
+    if (it && it.kind === 'nuzzle') {
+      cat.f = Math.sign(mouse.x - cat.x) || cat.f;
+      setState('nuzzle', rr(2.6, 4));
+      return;
+    }
+    if (it && it.kind === 'hunt') {
+      const s = S(), P = cat.plat, m = 0.3 * s;
+      cat.f = Math.sign(mouse.x - cat.x) || cat.f;
+      const lx = clamp(mouse.x + cat.f * 0.05 * s, P.x0 + m, P.x1 - m);
+      cat.plan = { to: P, lx, tx: cat.x, pounce: true, reach: { x: mouse.x, y: mouse.y } };
+      setState('crouch', rr(0.9, 1.5));
+      return;
+    }
+    decide();
+  }
+  function endState() {
+    if (cat.state === 'swat' || cat.state === 'probe') { if (prey) setState('chase'); else setState('idle', 1); return; }
+    if (cat.state === 'bat') { sendHome(); setState('sit', rr(2.5, 3.5)); cat.groomIn = 0.9; return; }
+    if (cat.state === 'land' && cat.landPounce) {
+      // Proud of itself: sit and lick a paw.
+      cat.landPounce = false;
+      setState('sit', rr(2.5, 3.5)); cat.groomIn = 0.7;
+      return;
+    }
+    if (cat.state === 'sleep') setState('stretch', 2.3);
+    else if (cat.state === 'stretch') setState('idle', rr(0.5, 1.2));
+    else decide();
+  }
+  function arcParams(x0, y0, x1, y1, apexY) {
+    const s = S(), g = 34 * s;
+    let apex = Math.min(y0, y1) - (0.45 * s + 0.12 * Math.abs(x1 - x0));
+    if (apexY != null) apex = Math.min(apex, apexY);
+    const vy0 = -Math.sqrt(2 * g * (y0 - apex));
+    const T = -vy0 / g + Math.sqrt(2 * (y1 - apex) / g);
+    return { x0, y0, x1, y1, g, vy0, T, vx: (x1 - x0) / T };
+  }
+  function launch() {
+    const Q = cat.plan.to, reach = cat.plan.reach || null;
+    const a = arcParams(cat.x, cat.y, cat.plan.lx, Q.y, reach ? reach.y + 0.35 * S() : null);
+    a.t = 0; a.to = Q; a.reach = reach; a.pounce = !!cat.plan.pounce; a.prey = !!cat.plan.prey; a.zoomy = !!cat.plan.zoomy;
+    if (a.pounce) cat.intent = null;
+    // Fresh prey usually sees it coming and darts off; tired prey doesn't.
+    if (a.prey && prey && rand() < 0.15 + 0.6 * prey.energy) {
+      prey.mode = 'run'; prey.t = rr(0.4, 0.8); prey.energy = Math.max(0, prey.energy - 0.12);
+      prey.vx = (Math.sign(prey.x - cat.x) || 1) * rr(2.2, 3.0) * S();
+    }
+    // Start the flight from the body angle the crouch ended in.
+    const r = cat.rig;
+    if (r) cat.pitch = Math.atan2(r.chest.y - r.hip.y, Math.abs(r.chest.x - r.hip.x) + 1e-3);
+    cat.air = a; cat.vx = a.vx; cat.vy = a.vy0;
+    cat.f = Math.sign(a.x1 - a.x0) || cat.f;
+    setState('air');
+  }
+
+  function update(dt) {
+    const s = S();
+    if (cat.state === 'sleep') cat.energy = Math.min(1, cat.energy + dt * 0.09);
+    else cat.energy = Math.max(0, cat.energy - dt * 0.02 * (1.6 - settings.activity));
+    cat.cool = Math.max(0, cat.cool - dt);
+
+    // The cursor moved: a hunt in progress is called off.
+    if (cat.intent && cat.intent.stamp != null && mouse.stillSince !== cat.intent.stamp) {
+      cat.intent = null;
+      if (cat.state === 'stalk' || (cat.state === 'crouch' && cat.plan && cat.plan.pounce)) {
+        cat.plan = null; cat.vx = 0; setState('sit', rr(1.5, 3));
+      }
+    }
+    if (cat.state === 'nuzzle' && cat.rig && (!mouse.active || Math.hypot(mouse.x - cat.rig.head.x, mouse.y - cat.rig.head.y) > 0.6 * s)) setState('idle', 0.8);
+
+    switch (cat.state) {
+      case 'walk': case 'stalk': case 'chase': case 'zoom': {
+        if (cat.state === 'chase') {
+          if (!prey || prey.mode === 'return' || prey.mode === 'caught') { cat.vx = 0; setState('idle', 1); break; }
+          if (prey.mode !== 'fly' && prey.plat !== cat.plat) {
+            // It ran onto another surface: jump after it.
+            const P2 = prey.plat, m2 = 0.4 * s;
+            const j = planJump(P2, clamp(prey.x - (Math.sign(prey.x - cat.x) || cat.f) * 0.8 * s, P2.x0 + m2, P2.x1 - m2));
+            if (j) { cat.plan = j; goWalk(j.tx); break; }
+            cat.tx = cat.x;
+          } else {
+            const pd = Math.sign(prey.x - cat.x) || cat.f, pdist = Math.abs(prey.x - cat.x);
+            if (prey.mode === 'hide' || prey.mode === 'tohide') {
+              // It went behind something: walk up and paw at it to flush it out.
+              if (pdist < 0.8 * s) { cat.tx = cat.x; cat.f = pd; }
+              else cat.tx = clamp(prey.x - pd * 0.65 * s, cat.plat.x0 + 0.3 * s, cat.plat.x1 - 0.3 * s);
+              if (prey.mode === 'hide' && pdist < 0.95 * s && cat.fa * pd > 0.6) { cat.swatDone = false; setState('probe', 0.8); break; }
+            } else {
+              if (pdist < 1.05 * s) { cat.tx = cat.x; cat.f = pd; }
+              else cat.tx = clamp(prey.x - pd * 1.0 * s, cat.plat.x0 + 0.3 * s, cat.plat.x1 - 0.3 * s);
+              if (prey.mode !== 'fly' && pdist < 1.7 * s && cat.fa * pd > 0.6 && (prey.mode === 'pause' || rand() < dt * 1.5)) { pounceAt(prey); break; }
+            }
+          }
+        }
+        const dx = cat.tx - cat.x, dir = Math.sign(dx);
+        if (dir) cat.f = dir;
+        const turned = cat.fa * cat.f > 0.6, a = actLevel();
+        const vmax = cat.state === 'stalk' ? 0.3 * s
+          : cat.state === 'zoom' ? 2.7 * s * (0.85 + 0.3 * a)
+          : cat.state === 'chase' ? 2.0 * s * (0.85 + 0.3 * a)
+          : 0.9 * s * (0.85 + 0.3 * a);
+        let want = turned ? dir * Math.min(vmax, Math.abs(dx) * 2.2 + 0.12 * s) : 0;
+        if (cat.state === 'chase' && Math.abs(dx) < 0.1 * s) want = 0;
+        cat.vx += (want - cat.vx) * damp(cat.state === 'zoom' ? 6 : 4, dt);
+        cat.x += cat.vx * dt;
+        if (cat.state !== 'chase' && (Math.abs(cat.tx - cat.x) < 0.02 * s || (dir !== 0 && Math.sign(cat.tx - cat.x) !== dir))) {
+          cat.x = cat.tx; cat.vx = 0; arrive();
+        }
+        break;
+      }
+      case 'crouch':
+        if (cat.plan && cat.plan.prey) {
+          // Keep aiming at the prey while winding up; if it bolts, give chase instead.
+          if (!prey || ['fly', 'return', 'caught', 'hide', 'tohide'].includes(prey.mode) || prey.plat !== cat.plat || Math.abs(prey.x - cat.x) > 2.2 * s) { cat.plan = null; setState('chase'); break; }
+          cat.plan.lx = clamp(prey.x, cat.plat.x0 + 0.3 * s, cat.plat.x1 - 0.3 * s);
+          cat.plan.reach = { x: prey.x, y: prey.y - 0.06 * s };
+        }
+        cat.vx += (0 - cat.vx) * damp(12, dt);
+        if (cat.fa * cat.f > 0.75) cat.timer -= dt;
+        if (cat.timer <= 0) launch();
+        break;
+      case 'air': {
+        const a = cat.air; a.t += dt;
+        const tt = Math.min(a.t, a.T);
+        cat.x = a.x0 + a.vx * tt;
+        cat.y = a.y0 + a.vy0 * tt + 0.5 * a.g * tt * tt;
+        cat.vy = a.vy0 + a.g * tt;
+        if (a.t >= a.T) {
+          cat.x = a.x1; cat.y = a.y1; cat.plat = a.to; cat.vx = 0; cat.vy = 0; cat.plan = null;
+          cat.landPounce = a.pounce && !a.prey && !a.zoomy;
+          setState('land', a.pounce ? 0.45 : 0.3);
+          feet.forEach(ft => { ft.y = cat.y; ft.swing = false; ft.raised = false; });
+          if (a.prey && prey && !['fly', 'return', 'caught', 'hide', 'tohide'].includes(prey.mode) && prey.plat === cat.plat && Math.abs(prey.x - cat.x) < 0.5 * s) {
+            prey.mode = 'caught'; prey.x = cat.x + cat.f * 0.3 * s; prey.y = cat.y;
+            setState('bat', 1.8);
+          }
+        }
+        break;
+      }
+      default:
+        if (cat.state === 'swat' && !cat.swatDone && cat.timer < 0.38) {
+          // Paw strike connects: the item pops off the page and becomes prey.
+          cat.swatDone = true;
+          const it = cat.swatItem;
+          if (it && !it.borrowed && !prey) {
+            it.borrowed = true;
+            prey = { item: it, x: it.hx, y: it.plat.y, vx: cat.f * rr(1.4, 2.1) * s, vy: -rr(1.0, 1.5) * s, rot: 0, mode: 'fly', t: 0, life: 0, plat: it.plat, energy: 1, hidCool: 0 };
+          }
+        }
+        if (cat.state === 'probe' && !cat.swatDone && cat.timer < 0.38) { cat.swatDone = true; flushPrey(); }
+        if (cat.state === 'idle' || cat.state === 'loaf' || (cat.state === 'sit' && cat.groom <= 0 && cat.groomIn <= 0)) {
+          cat.interestT -= dt;
+          if (cat.interestT <= 0) { cat.interestT = rr(2, 4); if (mouseInterest()) break; }
+        }
+        cat.vx += (0 - cat.vx) * damp(10, dt);
+        cat.x += cat.vx * dt;
+        cat.timer -= dt;
+        if (cat.state === 'sit') {
+          if (cat.groomIn > 0) { cat.groomIn -= dt; if (cat.groomIn <= 0) cat.groom = rr(1.6, 2.4); }
+          if (cat.groom > 0) { cat.groom -= dt; if (cat.groom <= 0) cat.groom = 0; }
+        }
+        if (cat.timer <= 0) endState();
+    }
+    if (cat.state !== 'air' && cat.plat) {
+      cat.x = clamp(cat.x, cat.plat.x0 + 0.2 * s, cat.plat.x1 - 0.2 * s);
+      cat.y = cat.plat.y;
+    }
+
+    cat.fa += (cat.f - cat.fa) * damp(cat.state === 'air' ? 4 : 7, dt);
+    if (cat.state === 'air' && cat.air) {
+      const a = cat.air;
+      const velAng = Math.atan2(cat.vy, Math.abs(a.vx) + 0.3 * s);
+      const aimAng = Math.atan2(a.y1 - (cat.y - 0.42 * s), Math.abs(a.x1 - cat.x) + 0.3 * s);
+      const pt = clamp(lerp(velAng, aimAng, 0.35), -1.15, 1.0);
+      cat.pitch += (pt - cat.pitch) * damp(9, dt);
+      cat.airBlend += (1 - cat.airBlend) * damp(12, dt);
+    } else {
+      cat.pitch += (0 - cat.pitch) * damp(7, dt);
+      cat.airBlend += (0 - cat.airBlend) * damp(10, dt);
+    }
+    cat.nuzzleBlend += ((cat.state === 'nuzzle' ? 1 : 0) - cat.nuzzleBlend) * damp(6, dt);
+    let target = POSES[poseKey()];
+    if (cat.state === 'nuzzle') {
+      // Stretch up a little if the cursor is higher than the head.
+      target = { ...target, chestH: target.chestH + clamp((cat.y - 0.62 * s - mouse.y) / s, 0, 0.12), headFwd: 0.05 };
+    }
+    if (cat.state === 'crouch' && cat.plan) {
+      // Wind up aimed at the target: chest and gaze rise for a jump up, drop for a jump down.
+      const aimY = cat.plan.reach ? cat.plan.reach.y + 0.3 * s : cat.plan.to.y;
+      const aim = clamp((cat.y - aimY) / (2.5 * s), -0.6, 1);
+      target = { ...target, chestH: target.chestH + aim * 0.14, hipH: target.hipH - Math.max(0, aim) * 0.04, headDrop: target.headDrop - aim * 0.1 };
+    }
+    const pk = (cat.state === 'sleep' || cat.pose.curl > 0.02) ? 3.2 : 8;
+    for (const k in target) cat.pose[k] += (target[k] - cat.pose[k]) * damp(pk, dt);
+    const tt = TAILP[tailKey()];
+    for (const k in tt) cat.tp[k] += (tt[k] - cat.tp[k]) * damp(6, dt);
+
+    cat.blinkT -= dt; if (cat.blinkT <= 0) { cat.blink = 0.13; cat.blinkT = rr(2, 5); }
+    cat.blink = Math.max(0, cat.blink - dt);
+    cat.earT -= dt; if (cat.earT <= 0) { cat.ear = 1; cat.earT = rr(2.5, 7); }
+    cat.ear = Math.max(0, cat.ear - dt * 5);
+
+    updatePrey(dt);
+    cat.preyCool = Math.max(0, cat.preyCool - dt);
+    updateLook(dt);
+    // Pick the gait from ground speed (with a little hysteresis so it doesn't flicker).
+    {
+      const v = Math.abs(cat.vx) / s;
+      let g = cat.gait || 'walk';
+      if (g === 'walk' && v > 1.25) g = 'trot';
+      else if (g === 'trot' && v < 1.0) g = 'walk';
+      else if (g === 'trot' && v > 2.0) g = 'gallop';
+      else if (g === 'gallop' && v < 1.7) g = 'trot';
+      cat.gait = g;
+      const G = GAITS[g];
+      DUTY = G.duty; STRIDE = G.stride; OFFS = G.offs; FWD = G.fwd; GLIFT = G.lift;
+    }
+    advanceGait(dt);
+    cat.rig = computeRig();
+    updateFeet(dt, cat.rig);
+    cat.rig.legs = [0, 1, 2, 3].map(i => legChain(i, cat.rig));
+    updateTail(dt, cat.rig);
+    updateParticles(dt);
+  }
+
+  function updateLook(dt) {
+    const s = S(), r = cat.rig;
+    const hx = r ? r.head.x : cat.x, hy = r ? r.head.y : cat.y - 0.5 * s;
+    let tgt = null, fromMouse = false;
+    if (mouse.active && Math.hypot(mouse.x - hx, mouse.y - hy) < 7 * s) { tgt = mouse; fromMouse = true; }
+    else if (!['walk', 'air', 'crouch'].includes(cat.state)) {
+      cat.glanceT -= dt;
+      if (cat.glanceT <= 0) {
+        cat.glance = rand() < 0.35 ? null : { x: cat.x + cat.f * rr(0.6, 4) * s, y: cat.y - rr(-0.3, 2.6) * s };
+        cat.glanceT = rr(1.3, 3.2);
+      }
+      tgt = cat.glance;
+    }
+    if (cat.state === 'crouch' && cat.plan) tgt = { x: cat.plan.lx, y: cat.plan.to.y - 0.3 * s };
+    if (prey && prey.mode !== 'return' && ['chase', 'crouch', 'swat', 'bat', 'land', 'idle', 'probe'].includes(cat.state)) {
+      tgt = { x: prey.x, y: prey.y - 0.05 * s }; fromMouse = false;
+    }
+    if (cat.state === 'wallscratch' && cat.wall) { tgt = { x: cat.wall.x, y: cat.y - 0.95 * s }; fromMouse = false; }
+    if (cat.state === 'sleep' || cat.groom > 0) tgt = null;
+    let ox = 0, oy = 0, tl = 0;
+    if (tgt) {
+      const dx = tgt.x - hx, dy = tgt.y - hy;
+      if (Math.sign(dx) === cat.f || Math.abs(dx) < 0.3 * s) {
+        const d = Math.hypot(dx, dy) || 1;
+        ox = dx / d * 0.03 * s; oy = dy / d * 0.03 * s;
+        tl = clamp(Math.atan2(dy, Math.abs(dx) + 0.5 * s), -0.7, 0.7) * 0.65;
+        cat.behindT = 0;
+      } else {
+        oy = -0.01 * s;
+        if (fromMouse && ['idle', 'sit', 'pet'].includes(cat.state)) {
+          cat.behindT += dt;
+          if (cat.behindT > 0.5) { cat.f = -cat.f; cat.behindT = 0; }
+        }
+      }
+    }
+    if (cat.state === 'air') tl = 0;
+    cat.lookOff.x += (ox - cat.lookOff.x) * damp(8, dt);
+    cat.lookOff.y += (oy - cat.lookOff.y) * damp(8, dt);
+    cat.tilt += (tl - cat.tilt) * damp(7, dt);
+  }
+
+  // ---------- rig ----------
+  function computeRig() {
+    const s = S(), fa = cat.fa, f = cat.f, P = cat.pose;
+    const sleeping = cat.state === 'sleep';
+    const breath = 1 + Math.sin(T * (sleeping ? 2.0 : 3.2)) * (sleeping ? 0.04 : 0.015);
+    const half = 0.27 * s * P.len;
+    let hip, chest, headBob = 0;
+    if (cat.state === 'air' && cat.air) {
+      // Body follows the arc: nose up on the way up, nose down on the way in.
+      const p = cat.pitch;
+      const cx = cat.x, cy = cat.y - 0.42 * s, h = half * 1.15;
+      hip = { x: cx - fa * Math.cos(p) * h, y: cy - Math.sin(p) * h };
+      chest = { x: cx + fa * Math.cos(p) * h, y: cy + Math.sin(p) * h };
+    } else {
+      // Gait bob: hips and shoulders each rise twice per stride, offset from each other.
+      const gw = gaitOn ? clamp(Math.abs(cat.vx) / (0.5 * s), 0, 1) * (1 + Math.max(0, Math.abs(cat.vx) / s - 1) * 1.2) : 0;
+      const bh = Math.cos(4 * Math.PI * gaitPhase) * 0.008 * s * gw;
+      const bc = Math.cos(4 * Math.PI * gaitPhase + 1.6) * 0.007 * s * gw;
+      headBob = -bc * 0.7;
+      // Butt wiggle while winding up a jump.
+      const wig = cat.state === 'crouch' && cat.timer > 0.12 ? Math.sin(T * 24) * 0.018 * s : 0;
+      // Leftover pitch from a landing settles out (front lands first, then the rump).
+      const lp = Math.sin(cat.pitch) * half * 0.8;
+      // Faster gaits: the trot bounces; the gallop flexes and extends the spine and rocks
+      // front-to-back, with a lift as all four paws leave the ground.
+      let gx = 0, gh = 0, gc = 0;
+      if (gaitOn && cat.gait && cat.gait !== 'walk') {
+        const ph = TAU * gaitPhase, k = clamp((Math.abs(cat.vx) / s - 0.9) / 1.2, 0, 1);
+        if (cat.gait === 'gallop') {
+          const lift = Math.abs(Math.sin(ph)) * 0.03 * s * k;
+          gx = Math.sin(ph) * 0.11 * k;
+          gh = Math.sin(ph + 1.3) * 0.05 * s * k - lift;
+          gc = Math.sin(ph - 0.7) * 0.05 * s * k - lift;
+        } else {
+          gh = gc = -Math.abs(Math.sin(2 * ph)) * 0.018 * s * k;
+        }
+        headBob -= gc * 0.6;
+      }
+      hip = { x: cat.x - fa * half * (1 + gx) + wig, y: cat.y - P.hipH * s + bh - lp + gh };
+      chest = { x: cat.x + fa * half * (1 + gx), y: cat.y - P.chestH * s + bc + lp + gc };
+    }
+    const sp = [];
+    for (let i = 0; i < 5; i++) {
+      const u = i / 4;
+      sp.push({ x: lerp(hip.x, chest.x, u), y: lerp(hip.y, chest.y, u) - Math.sin(Math.PI * u) * P.arch * s });
+    }
+    if (P.curl > 0.001) {
+      const cx = cat.x, cy = cat.y - 0.16 * s, R = 0.15 * s;
+      for (let i = 0; i < 5; i++) {
+        const th = (Math.PI + 0.35) - i / 4 * (Math.PI + 0.7);
+        sp[i].x = lerp(sp[i].x, cx + Math.cos(th) * R * fa, P.curl);
+        sp[i].y = lerp(sp[i].y, cy - Math.sin(th) * R, P.curl);
+      }
+    }
+    hip = sp[0]; chest = sp[4];
+    // Torso profile, hip -> chest: back line (up) and belly line (dn).
+    // Round rump, tucked-up waist, deep ribcage.
+    const bulk = (1 + 0.3 * P.curl) * breath * s;
+    const rump = P.rump || 0;
+    // Girth mostly fills out the gut (a low, saggy belly that sways a little as it walks),
+    // and only slightly broadens the back.
+    const g = settings.girth, gb = Math.max(0, g - 1);
+    const sway = gaitOn ? Math.sin(4 * Math.PI * gaitPhase - 1) * 0.05 * gb : 0;
+    const back = Math.pow(g, 0.3);
+    const up = [0.13 * (1 + 0.45 * rump), 0.12, 0.115, 0.12, 0.125].map(v => v * bulk * back);
+    const gut = [1 + 0.35 * gb, 1 + 1.6 * gb + sway, 1 + 1.4 * gb + sway, 1 + 0.6 * gb, 1 + 0.25 * gb]
+      .map(v => g < 1 ? v * g : v);
+    const dn = [0.12 * (1 + 0.6 * rump), 0.085 * (1 + 0.5 * rump), 0.1, 0.145, 0.155].map((v, i) => v * bulk * gut[i]);
+    // Leg roots sit inside the body so the thigh and upper arm read as part of the torso.
+    const sh = { x: chest.x - fa * 0.03 * s, y: chest.y + 0.01 * s };
+    const shF = { x: sh.x - fa * 0.04 * s, y: sh.y - 0.012 * s };
+    const hp = { x: hip.x + fa * 0.03 * s, y: hip.y };
+    const hpF = { x: hp.x - fa * 0.04 * s, y: hp.y - 0.012 * s };
+    let hx = chest.x + fa * (0.16 + P.headFwd) * s, hy = chest.y - (0.17 - P.headDrop) * s + headBob;
+    hx = lerp(hx, chest.x + fa * 0.05 * s, P.curl);
+    hy = lerp(hy, chest.y - 0.06 * s, P.curl);
+    const nod = cat.groom > 0 ? Math.sin(T * 10) * 0.02 * s + 0.03 * s : 0;
+    hx += cat.lookOff.x * (1 - P.curl);
+    hy += cat.lookOff.y * (1 - P.curl) + nod;
+    let tiltRaw = cat.tilt * (1 - P.curl) + P.curl * 0.55 + (cat.groom > 0 ? 0.35 : 0);
+    // Head bump: forehead pressed to the cursor, rubbing side to side.
+    if (cat.nuzzleBlend > 0.001) {
+      const nb = cat.nuzzleBlend, rub = Math.sin(T * 5.5);
+      let tx = mouse.x - fa * 0.09 * s + rub * 0.035 * s * fa, ty = mouse.y + 0.05 * s + Math.cos(T * 2.75) * 0.02 * s;
+      const bx = chest.x, by = chest.y - 0.05 * s, vx = tx - bx, vy = ty - by, d = Math.hypot(vx, vy), lim = 0.34 * s;
+      if (d > lim) { tx = bx + vx / d * lim; ty = by + vy / d * lim; }
+      hx = lerp(hx, tx, nb); hy = lerp(hy, ty, nb);
+      tiltRaw = lerp(tiltRaw, -0.15 + rub * 0.3, nb);
+    }
+    // In the air the head leads: the neck stretches toward the landing spot.
+    if (cat.airBlend > 0.001 && cat.air) {
+      const a = cat.air, bfx = fa * Math.cos(cat.pitch), bfy = Math.sin(cat.pitch);
+      const aimPt = a.reach || { x: a.x1, y: a.y1 - 0.3 * s };
+      let ax = aimPt.x - chest.x, ay = aimPt.y - chest.y;
+      const al = Math.hypot(ax, ay) || 1; ax /= al; ay /= al;
+      const w = cat.air.t / cat.air.T > 0.4 ? 0.75 : 0.5;
+      let dx = bfx * (1 - w) + ax * w, dy = bfy * (1 - w) + ay * w;
+      const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+      const ahx = chest.x + dx * 0.21 * s, ahy = chest.y + dy * 0.21 * s - 0.07 * s;
+      const at = clamp(Math.atan2(dy, Math.abs(dx)), -1.1, 1.1) * 0.85;
+      hx = lerp(hx, ahx, cat.airBlend); hy = lerp(hy, ahy, cat.airBlend);
+      tiltRaw = lerp(tiltRaw, at, cat.airBlend);
+    }
+    return { s, fa, f, hip, chest, sp, up, dn, sh, shF, hp, hpF, head: { x: hx, y: hy, rot: tiltRaw * f }, legs: null };
+  }
+  function headPt(r, lu, lv) {
+    const s = r.s, c = Math.cos(r.head.rot), sn = Math.sin(r.head.rot);
+    const x = r.fa * lu * s, y = lv * s;
+    return { x: r.head.x + x * c - y * sn, y: r.head.y + x * sn + y * c };
+  }
+  function anchorOf(i, r) { return [r.sh, r.shF, r.hp, r.hpF][i]; }
+  function restX(i, r) {
+    const P = cat.pose, s = r.s, fa = r.fa;
+    return anchorOf(i, r).x + fa * (i < 2 ? P.fr : P.hr) * s;
+  }
+  function ik(A, Tg, a, b, bend) {
+    const dx = Tg.x - A.x, dy = Tg.y - A.y, d = Math.hypot(dx, dy) || 1e-6;
+    const dc = clamp(d, Math.abs(a - b) + 1e-3, a + b - 1e-3);
+    const ux = dx / d, uy = dy / d;
+    const ang = Math.acos(clamp((a * a + dc * dc - b * b) / (2 * a * dc), -1, 1)) * bend;
+    const c = Math.cos(ang), sn = Math.sin(ang);
+    return {
+      knee: { x: A.x + (ux * c - uy * sn) * a, y: A.y + (ux * sn + uy * c) * a },
+      end: { x: A.x + ux * dc, y: A.y + uy * dc },
+    };
+  }
+
+  // Paw on the ground -> distal joint (wrist/hock) from the distal angle -> two-bone solve back to the body.
+  function legChain(i, r) {
+    const s = r.s, fa = r.fa, sg = Math.sign(fa) || 1, ft = feet[i], front = i < 2, L = front ? LEG.front : LEG.hind;
+    const A = anchorOf(i, r);
+    const dl = L.distal * s, a = ft.ang;
+    const D = { x: ft.x + (front ? 1 : -1) * fa * Math.sin(a) * dl, y: ft.y - Math.cos(a) * dl };
+    // front: elbow points back; hind: knee points forward (so the hock points back)
+    const res = ik(A, D, L.upper * s, L.lower * s, front ? sg : -sg);
+    const ox = res.end.x - D.x, oy = res.end.y - D.y;
+    let K = res.knee, Dj = res.end, Pw = { x: ft.x + ox, y: ft.y + oy };
+    if (cat.state !== 'air') {
+      // Lying down: fold the leg flat under the body instead of letting the knee poke up.
+      const tuck = Math.max(clamp((cat.pose.curl - 0.15) / 0.6, 0, 1), cat.pose.lie || 0);
+      if (tuck > 0) {
+        const pawT = { x: A.x + fa * (front ? 0.12 : 0.05) * s, y: cat.y - 0.01 * s };
+        const kneeT = { x: lerp(A.x, pawT.x, 0.45), y: lerp(A.y, pawT.y, 0.55) };
+        const dT = { x: lerp(A.x, pawT.x, 0.8), y: lerp(A.y, pawT.y, 0.9) };
+        K = lerpPt(K, kneeT, tuck); Dj = lerpPt(Dj, dT, tuck); Pw = lerpPt(Pw, pawT, tuck);
+      }
+      // Nothing goes below the surface the cat is standing on.
+      const lw = L.w;
+      K.y = Math.min(K.y, cat.y - lw[1] * s / 2);
+      Dj.y = Math.min(Dj.y, cat.y - lw[2] * s / 2);
+      Pw.y = Math.min(Pw.y, cat.y);
+    }
+    return { A, K, D: Dj, P: Pw, front };
+  }
+  function lerpPt(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) }; }
+
+  function touchAng(i) { return i < 2 ? 0.0 : 0.45; }
+  function poseAng(i) { return i < 2 ? cat.pose.aF : cat.pose.aH; }
+  function stanceAng(i, rel, fwd, span) {
+    const k = clamp((fwd - rel) / span, 0, 1);
+    return i < 2 ? lerp(0.0, 0.5, k) : lerp(0.45, -0.2, k);
+  }
+  function swingBump(i, u) {
+    if (i < 2) return 1.35 * Math.sin(Math.PI * clamp(u / 0.72, 0, 1)) - 0.3 * Math.sin(Math.PI * clamp((u - 0.6) / 0.4, 0, 1));
+    return -0.85 * Math.sin(Math.PI * clamp(u / 0.7, 0, 1));
+  }
+  function swingDur() {
+    const s = S();
+    return clamp((1 - DUTY) * STRIDE * s / Math.max(Math.abs(cat.vx), 1e-3), 0.16, 0.42);
+  }
+  function startSwing(ft, i, dur, lift, a1, amp, walkStep) {
+    Object.assign(ft, { swing: true, u: 0, dur, sx: ft.x, sy: ft.y, a0: ft.ang, a1, amp, lift, walkStep });
+  }
+  function walkingNow() {
+    return ['walk', 'stalk', 'chase', 'zoom'].includes(cat.state) && cat.fa * cat.f > 0.6 && Math.abs(cat.vx) > 0.05 * S();
+  }
+
+  function advanceGait(dt) {
+    const s = S(), L = STRIDE * s;
+    const walking = walkingNow();
+    if (walking && !gaitOn) {
+      gaitOn = true;
+      gaitPhase = DUTY - 0.02;
+      const r = cat.rig;
+      for (let i = 0; i < 4; i++) {
+        const p = frac(gaitPhase + OFFS[i]), ft = feet[i];
+        if (ft.swing || ft.raised) continue;
+        // Paws left out of place by the previous pose step first instead of being dragged.
+        const off = r ? Math.abs(ft.x - restX(i, r)) > 0.12 * s : false;
+        if (p >= DUTY || off) {
+          startSwing(ft, i, off && p < DUTY ? swingDur() * 0.8 : swingDur() * (1 - p) / (1 - DUTY) + 0.06, (i < 2 ? LEG.front : LEG.hind).lift * GLIFT * s, touchAng(i), 1, true);
+        }
+      }
+    }
+    if (!walking) { gaitOn = false; return; }
+    const prev = gaitPhase;
+    gaitPhase += Math.abs(cat.vx) * dt / L;
+    for (let i = 0; i < 4; i++) {
+      const ft = feet[i];
+      if (ft.swing) continue;
+      const p0 = frac(prev + OFFS[i]), p1 = frac(gaitPhase + OFFS[i]);
+      const crossed = p1 >= p0 ? (p0 < DUTY && p1 >= DUTY) : (p0 < DUTY || p1 >= DUTY);
+      if (crossed) startSwing(ft, i, swingDur(), (i < 2 ? LEG.front : LEG.hind).lift * GLIFT * s, touchAng(i), 1, true);
+    }
+  }
+
+  function updateFeet(dt, r) {
+    const s = r.s, fa = r.fa, sg = Math.sign(fa) || 1, gy = cat.y;
+    const span = DUTY * STRIDE * s;
+    if (cat.state === 'air' && cat.air) {
+      const a = cat.air, prog = a.t / a.T;
+      // Body frame: F points nose-ward along the spine, N points belly-ward.
+      const F = { x: fa * Math.cos(cat.pitch), y: Math.sin(cat.pitch) };
+      const N = { x: -F.y * sg, y: F.x * sg };
+      const at = (A, u, v) => ({ x: A.x + (F.x * u + N.x * v) * s, y: A.y + (F.y * u + N.y * v) * s });
+      for (let i = 0; i < 4; i++) {
+        const ft = feet[i], A = anchorOf(i, r), front = i < 2, far = i % 2 === 1;
+        let tgt, ta, k = 12;
+        if (front) {
+          if (prog < (a.reach ? 0.2 : 0.45)) { tgt = at(A, 0.07, 0.15); ta = 1.4; } // tucked to the chest
+          else {                                                            // reach for the landing edge (or the cursor)
+            const Lx = a.reach ? a.reach.x + fa * (far ? -0.03 : 0.02) * s : a.x1 + fa * (far ? 0.06 : 0.12) * s;
+            const Ly = a.reach ? a.reach.y + (far ? 0.03 : 0) * s : a.y1;
+            const vx = Lx - A.x, vy = Ly - A.y, d = Math.hypot(vx, vy) || 1, reach = Math.min(d, 0.42 * s);
+            tgt = { x: A.x + vx / d * reach, y: A.y + vy / d * reach }; ta = -0.1; k = 9;
+          }
+        } else {
+          if (prog < 0.35) { tgt = at(A, -0.32, 0.18); ta = -0.9; k = 16; } // pushed off, trailing
+          else { tgt = at(A, 0.06, 0.26); ta = 0.7; k = 8; }                // drawn up under the body
+        }
+        if (far) { tgt.x -= fa * 0.03 * s; }
+        ft.x += (tgt.x - ft.x) * damp(k, dt); ft.y += (tgt.y - ft.y) * damp(k, dt); ft.ang += (ta - ft.ang) * damp(k, dt);
+        ft.swing = false; ft.raised = false;
+      }
+      return;
+    }
+    const groomPaw = cat.state === 'sit' && cat.groom > 0;
+    const turning = !gaitOn && Math.abs(cat.f - fa) > 0.08;
+    for (let i = 0; i < 4; i++) {
+      const ft = feet[i], rest = restX(i, r);
+      const A0 = anchorOf(i, r);
+      if (i === 0 && ((cat.state === 'swat' && cat.swatItem) || (cat.state === 'probe' && prey))) {
+        // Wind up, then a quick swipe at the item (or behind the card where the prey hides).
+        const t = 0.8 - cat.timer, wind = t < 0.38;
+        const hit = cat.state === 'probe' ? { x: prey.x, y: prey.y - 0.04 * s } : { x: cat.swatItem.hx + fa * 0.02 * s, y: cat.swatItem.plat.y - cat.swatItem.h * 0.5 };
+        const tgt = wind ? { x: A0.x + fa * 0.1 * s, y: A0.y + 0.14 * s } : hit;
+        const k = damp(wind ? 12 : 30, dt);
+        ft.x += (tgt.x - ft.x) * k; ft.y += (tgt.y - ft.y) * k; ft.ang += ((wind ? 1.3 : -0.2) - ft.ang) * damp(14, dt);
+        ft.swing = false; ft.raised = true; continue;
+      }
+      if (cat.state === 'bat' && i < 2 && prey) {
+        // Pin it, batting with alternating paws.
+        const tx = prey.x + fa * (i === 0 ? 0.03 : -0.03) * s, ty = gy - Math.max(0, Math.sin(T * 9 + i * Math.PI)) * 0.07 * s;
+        ft.x += (tx - ft.x) * damp(18, dt); ft.y += (ty - ft.y) * damp(18, dt); ft.ang += (0.2 - ft.ang) * damp(10, dt);
+        ft.swing = false; ft.raised = true; continue;
+      }
+      if (cat.state === 'wallscratch' && i < 2 && cat.wall && cat.pose.chestH > 0.45) {
+        // Slow, deliberate pulls down the wall with alternating paws, then reach back up.
+        const w = cat.wall, top = Math.min(0.88 * s, w.h - 4);
+        const p = frac(T * 0.85 + (i === 1 ? 0.5 : 0));
+        let hgt, off = 0;
+        if (p < 0.55) hgt = lerp(top, top - 0.22 * s, smooth(p / 0.55));
+        else { const u = (p - 0.55) / 0.45; hgt = lerp(top - 0.22 * s, top, smooth(u)); off = Math.sin(Math.PI * u) * 0.04 * s; }
+        const tx = w.x - w.dir * (0.03 * s + off + (i === 1 ? 0.015 * s : 0)), ty = gy - hgt;
+        ft.x += (tx - ft.x) * damp(14, dt); ft.y += (ty - ft.y) * damp(14, dt);
+        ft.ang += (-2.6 - ft.ang) * damp(10, dt); // paw flat on the wall, wrist below it
+        if (p < 0.55 && (ft.lastP == null || ft.lastP >= 0.55)) parts.push({ k: 'vscratch', x: w.x - w.dir * 2, y: gy - top + 0.02 * s, dir: w.dir, still: true, vx: 0, vy: 0, life: 0, max: 2.2 });
+        ft.lastP = p; ft.swing = false; ft.raised = true; continue;
+      }
+      if (cat.state === 'scratch' && i < 2 && cat.pose.fr > 0.12) {
+        // Alternating rakes: pull back on the surface, lift and reach forward again. Unhurried.
+        const p = frac(T * 1.1 + (i === 1 ? 0.5 : 0));
+        let off, lift = 0;
+        if (p < 0.6) off = lerp(0.14, -0.02, p / 0.6);
+        else { const u = (p - 0.6) / 0.4; off = lerp(-0.02, 0.14, smooth(u)); lift = Math.sin(Math.PI * u) * 0.05; }
+        const tx = rest + fa * off * s, ty = gy - lift * s;
+        ft.x += (tx - ft.x) * damp(25, dt); ft.y += (ty - ft.y) * damp(25, dt); ft.ang += ((p < 0.6 ? -0.2 : 0.8) - ft.ang) * damp(14, dt);
+        if (p < 0.6 && (ft.lastP == null || ft.lastP >= 0.6)) parts.push({ k: 'scratch', x: rest + fa * 0.07 * s, y: gy, dir: Math.sign(fa) || 1, still: true, vx: 0, vy: 0, life: 0, max: 1.8 });
+        ft.lastP = p; ft.swing = false; ft.raised = true; continue;
+      }
+      if (i === 0 && groomPaw) {
+        const p = headPt(r, 0.07, 0.13);
+        ft.x += (p.x - ft.x) * damp(10, dt);
+        ft.y += (p.y + Math.sin(T * 10) * 0.02 * s - ft.y) * damp(10, dt);
+        ft.ang += (1.4 - ft.ang) * damp(10, dt);
+        ft.swing = false; ft.raised = true;
+        continue;
+      }
+      if (ft.raised) { ft.raised = false; startSwing(ft, i, 0.3, 0.02 * s, poseAng(i), 0.2, false); }
+      if (ft.swing) {
+        ft.u += dt / ft.dur;
+        const u = Math.min(1, ft.u);
+        // Paw peels up first, then travels forward, then sets down: lift leads, reach follows.
+        const e = ft.walkStep ? smooth(clamp((u - 0.08) / 0.84, 0, 1)) : smooth(u);
+        const remain = (1 - u) * ft.dur;
+        const tx = ft.walkStep ? rest + cat.vx * remain + fa * span * FWD[i] : rest;
+        ft.x = lerp(ft.sx, tx, e);
+        ft.y = lerp(ft.sy, gy, e) - ft.lift * Math.sin(Math.PI * Math.pow(u, 0.65));
+        ft.ang = lerp(ft.a0, ft.a1, e) + ft.amp * swingBump(i, u);
+        if (ft.u >= 1) { ft.swing = false; ft.x = tx; ft.y = gy; }
+      } else {
+        const err = rest - ft.x;
+        if (!gaitOn && (turning || Math.abs(err) > 0.12 * s)) {
+          // Turning or catching up after a landing / pose change: the paw lifts and glides
+          // to where it belongs instead of staying glued to the floor.
+          ft.x += err * damp(turning ? 16 : 11, dt);
+          const left = Math.abs(rest - ft.x);
+          ft.y = gy - Math.min(0.06 * s, left * 0.45) - (turning ? 0.03 * s * (1 - Math.abs(fa)) * (i % 2 ? 0.6 : 1) : 0);
+        } else ft.y = gy;
+        const ta = gaitOn ? stanceAng(i, (ft.x - rest) * sg, span * FWD[i], span) : poseAng(i);
+        ft.ang += (ta - ft.ang) * damp(gaitOn ? 16 : 9, dt);
+      }
+    }
+    // Standing still: tidy small offsets one paw at a time, hind first, like a cat settling.
+    if (!gaitOn && !turning && !feet.some(ft => ft.swing)) {
+      for (const i of [2, 0, 3, 1]) {
+        const ft = feet[i];
+        if (ft.raised || (i === 0 && groomPaw)) continue;
+        const e = Math.abs(ft.x - restX(i, r));
+        if (e > 0.04 * s && e <= 0.12 * s) {
+          startSwing(ft, i, 0.2, (i < 2 ? 0.05 : 0.04) * s, poseAng(i), 0.45, false);
+          break;
+        }
+      }
+    }
+  }
+
+  function updateTail(dt, r) {
+    const s = r.s, seg = 0.078 * s, fa = r.fa, tp = cat.tp;
+    tail[0].x = r.hip.x - fa * 0.09 * s; tail[0].y = r.hip.y - 0.03 * s;
+    let a = tp.elev + Math.sin(T * tp.sf) * tp.sway * 0.4;
+    // Stiffer follow while walking so the tail is carried, not trailed.
+    const k = damp(cat.state === 'walk' ? 45 : 22, dt), gy = cat.y - 0.035 * s;
+    for (let i = 1; i < TAIL_N; i++) {
+      a += tp.curl + Math.sin(T * tp.sf - i * 0.55) * tp.sway * 0.18 * (i / TAIL_N);
+      const tx = tail[i - 1].x - fa * Math.cos(a) * seg, ty = tail[i - 1].y - Math.sin(a) * seg;
+      tail[i].x += (tx - tail[i].x) * k; tail[i].y += (ty - tail[i].y) * k;
+      if (cat.state !== 'air' && tail[i].y > gy) tail[i].y = gy;
+      const vx = tail[i].x - tail[i - 1].x, vy = tail[i].y - tail[i - 1].y, d = Math.hypot(vx, vy) || 1;
+      tail[i].x = tail[i - 1].x + vx / d * seg; tail[i].y = tail[i - 1].y + vy / d * seg;
+    }
+  }
+
+  function updateParticles(dt) {
+    const s = S(), r = cat.rig;
+    if (cat.state === 'sleep' && cat.pose.curl > 0.7) {
+      cat.zT -= dt;
+      if (cat.zT <= 0) { cat.zT = 1.4; parts.push({ k: 'z', x: r.head.x + r.fa * 0.05 * s, y: r.head.y - 0.14 * s, vx: r.fa * 0.06 * s, vy: -0.2 * s, life: 0, max: 2.6 }); }
+    }
+    if (cat.state === 'pet' || (cat.state === 'nuzzle' && cat.nuzzleBlend > 0.6)) {
+      cat.heartT -= dt;
+      if (cat.heartT <= 0) { cat.heartT = cat.state === 'pet' ? 0.45 : 0.8; parts.push({ k: 'heart', x: r.head.x + rr(-0.1, 0.1) * s, y: r.head.y - 0.18 * s, vx: rr(-0.05, 0.05) * s, vy: -0.28 * s, life: 0, max: 1.5 }); }
+    }
+    for (const p of parts) { p.life += dt; if (p.still) continue; p.x += (p.vx + Math.sin(p.life * 3) * 0.05 * s) * dt; p.y += p.vy * dt; }
+    for (let i = parts.length - 1; i >= 0; i--) if (parts[i].life >= parts[i].max) parts.splice(i, 1);
+  }
+
+  // ---------- drawing ----------
+  function drawPath(pts, w, color) {
+    ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 0; i < pts.length - 1; i++) {
+      ctx.lineWidth = (w[i] + w[i + 1]) / 2;
+      ctx.beginPath(); ctx.moveTo(pts[i].x, pts[i].y); ctx.lineTo(pts[i + 1].x, pts[i + 1].y); ctx.stroke();
+    }
+  }
+  function drawEll(x, y, rx, ry, rot, color) {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, TAU); ctx.fill();
+  }
+  function drawPoly(pts, color) {
+    const s = S();
+    ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineJoin = 'round'; ctx.lineWidth = 0.025 * s;
+    ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  // Torso as one smooth outline: back line, round chest, belly line with a waist tuck, round rump.
+  function drawTorso(r, color) {
+    const sp = r.sp, n = sp.length, sg = Math.sign(r.fa) || 1;
+    const top = [], bot = [], tan = [], nrm = [];
+    for (let i = 0; i < n; i++) {
+      const a = sp[Math.max(0, i - 1)], b = sp[Math.min(n - 1, i + 1)];
+      let tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty);
+      if (l < 1e-3) { tx = sg; ty = 0; } else { tx /= l; ty /= l; }
+      const ux = ty * sg, uy = -tx * sg;
+      tan.push({ x: tx, y: ty }); nrm.push({ x: ux, y: uy });
+      top.push({ x: sp[i].x + ux * r.up[i] * 1.08, y: sp[i].y + uy * r.up[i] * 1.08 });
+      bot.push({ x: sp[i].x - ux * r.dn[i] * 1.08, y: sp[i].y - uy * r.dn[i] * 1.08 });
+    }
+    const cap = (i, dir) => {
+      const rad = (r.up[i] + r.dn[i]) / 2, off = (r.up[i] - r.dn[i]) / 2;
+      return { x: sp[i].x + tan[i].x * rad * dir + nrm[i].x * off, y: sp[i].y + tan[i].y * rad * dir + nrm[i].y * off };
+    };
+    const ring = [...top, cap(n - 1, 1.05), ...bot.reverse(), cap(0, -1)];
+    const m = ring.length, mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+    ctx.fillStyle = color; ctx.beginPath();
+    const s0 = mid(ring[m - 1], ring[0]); ctx.moveTo(s0.x, s0.y);
+    for (let i = 0; i < m; i++) { const p = ring[i], q = mid(p, ring[(i + 1) % m]); ctx.quadraticCurveTo(p.x, p.y, q.x, q.y); }
+    ctx.closePath(); ctx.fill();
+  }
+
+  function drawLeg(L, color) {
+    const lg = Math.pow(settings.girth, 0.35);
+    const s = S(), lw = (L.front ? LEG.front : LEG.hind).w.map((v, i) => v * s * (i === 0 ? lg * lg : lg));
+    drawPath([L.A, L.K, L.D, L.P], lw, color);
+    // paw: a small oval with the toes forward of the contact point
+    const dx = L.P.x - L.D.x, dy = L.P.y - L.D.y;
+    const rot = Math.atan2(dy, dx) - Math.sign(dx || 1) * Math.PI / 2;
+    drawEll(L.P.x + cat.fa * 0.016 * s, L.P.y - 0.017 * s, 0.052 * s, 0.033 * s, clamp(rot * 0.3, -0.5, 0.5), color);
+  }
+
+  function eyesClosed() { return cat.blink > 0 || cat.pose.curl > 0.5 || cat.state === 'pet' || cat.nuzzleBlend > 0.5 || cat.groom > 0; }
+  function drawPaw(L, color) {
+    const s = S(), dx = L.P.x - L.D.x, dy = L.P.y - L.D.y;
+    const rot = Math.atan2(dy, dx) - Math.sign(dx || 1) * Math.PI / 2;
+    drawEll(L.P.x + cat.fa * 0.016 * s, L.P.y - 0.017 * s, 0.052 * s, 0.033 * s, clamp(rot * 0.3, -0.5, 0.5), color);
+  }
+  function pointColor(pal) { return darken(pal.coat, settings.coat === 'cream' || settings.coat === 'white' ? 0.42 : 0.55); }
+  // Leg markings are drawn right after their own leg and sized to it, so they ride along with
+  // the leg and never spill onto the body or the leg in front.
+  function legPattern(Lg, pal, far) {
+    const pat = settings.pattern;
+    if (pat === 'solid' || pat === 'calico') return;
+    const s = S(), w = legWidths(Lg), along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    if (pat === 'tabby') {
+      const dx = Lg.D.x - Lg.K.x, dy = Lg.D.y - Lg.K.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+      ctx.strokeStyle = far ? darken(pal.stripe, 0.85) : pal.stripe; ctx.lineCap = 'butt'; ctx.lineWidth = 0.026 * s;
+      for (const u of [0.3, 0.65]) {
+        const p = along(Lg.K, Lg.D, u), half = lerp(w[1], w[2], u) * 0.5;
+        ctx.beginPath(); ctx.moveTo(p.x + nx * half, p.y + ny * half); ctx.lineTo(p.x - nx * half, p.y - ny * half); ctx.stroke();
+      }
+    } else {
+      const col = pat === 'tuxedo' ? (far ? '#dcd7cd' : BIB) : (far ? darken(pointColor(pal), 0.85) : pointColor(pal));
+      const start = along(Lg.K, Lg.D, pat === 'tuxedo' ? 0.55 : 0.3);
+      drawPath([start, Lg.D, Lg.P], [lerp(w[1], w[2], pat === 'tuxedo' ? 0.55 : 0.3), w[2], w[3]], col);
+      drawPaw(Lg, col);
+    }
+    ctx.restore();
+  }
+  // Same drawing as the extension: body first, then the coat pattern, then the eyes.
+  function earPts(r, near) {
+    const twitch = Math.sin(cat.ear * Math.PI) * 0.05, sleepy = cat.pose.curl * 0.04;
+    return near
+      ? [headPt(r, -0.03, -0.085), headPt(r, 0.075, -0.075), headPt(r, 0.03 + twitch, -0.21 + sleepy)]
+      : [headPt(r, -0.1, -0.06), headPt(r, -0.005, -0.095), headPt(r, -0.075, -0.2 + sleepy)];
+  }
+  function legWidths(L) {
+    const lg = Math.pow(settings.girth, 0.35), s = S();
+    return (L.front ? LEG.front : LEG.hind).w.map((v, i) => v * s * (i === 0 ? lg * lg : lg));
+  }
+  function spineFrame(r, i) {
+    const sp = r.sp, n = sp.length, sg = Math.sign(r.fa) || 1;
+    const a = sp[Math.max(0, i - 1)], b = sp[Math.min(n - 1, i + 1)];
+    let tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty);
+    if (l < 1e-3) { tx = sg; ty = 0; } else { tx /= l; ty /= l; }
+    return { p: sp[i], t: { x: tx, y: ty }, n: { x: ty * sg, y: -tx * sg } };
+  }
+  function drawBody(r, pal) {
+    const s = r.s, L = r.legs, af = Math.abs(r.fa);
+    drawLeg(L[3], pal.shade);
+    drawLeg(L[1], pal.shade);
+    legPattern(L[3], pal, true);
+    legPattern(L[1], pal, true);
+    drawPath(tail, tail.map((_, i) => lerp(0.08, 0.048, i / (TAIL_N - 1)) * s), pal.coat);
+    drawTorso(r, pal.coat);
+    const gn = 1 + (settings.girth - 1) * 1.3;
+    drawPath([{ x: r.chest.x, y: r.chest.y - 0.02 * s }, { x: lerp(r.chest.x, r.head.x, 0.6), y: lerp(r.chest.y, r.head.y, 0.6) }], [0.2 * s * gn, 0.17 * s * gn], pal.coat);
+    drawPoly(earPts(r, false), pal.shade);
+    drawEll(r.head.x, r.head.y, 0.145 * s * (0.75 + 0.25 * af), 0.125 * s, r.head.rot, pal.coat);
+    const m = headPt(r, 0.1, 0.035);
+    drawEll(m.x, m.y, 0.066 * s * (0.6 + 0.4 * af), 0.066 * s * (0.6 + 0.4 * af), 0, pal.coat);
+    drawPoly(earPts(r, true), pal.coat);
+    drawPattern(r, pal);
+    drawLeg(L[2], pal.coat);
+    legPattern(L[2], pal, false);
+    drawLeg(L[0], pal.coat);
+    legPattern(L[0], pal, false);
+  }
+  // Patterns are painted with 'source-atop', so they only land on the cat itself.
+  function drawPattern(r, pal) {
+    const pat = settings.pattern;
+    if (pat === 'solid') return;
+    const s = r.s, L = r.legs, af = Math.abs(r.fa);
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    const line = (a, b, w, col) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); };
+    const along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
+    if (pat === 'tabby') {
+      const col = pal.stripe;
+      for (let i = 0; i < 5; i++) {
+        const F = spineFrame(r, i), p = F.p, k = i === 4 ? 0.6 : 1;
+        const a = { x: p.x + F.n.x * r.up[i] * 1.3, y: p.y + F.n.y * r.up[i] * 1.3 };
+        const b = { x: p.x - F.n.x * r.dn[i] * 0.2 * k, y: p.y - F.n.y * r.dn[i] * 0.2 * k };
+        line({ x: a.x - F.t.x * 0.02 * s, y: a.y - F.t.y * 0.02 * s }, b, 0.045 * s, col);
+      }
+      for (let i = 3; i < TAIL_N; i += 2) {
+        const p = tail[i], q = tail[i - 1], tx = p.x - q.x, ty = p.y - q.y, l = Math.hypot(tx, ty) || 1;
+        const nx = -ty / l, ny = tx / l;
+        line({ x: p.x + nx * 0.07 * s, y: p.y + ny * 0.07 * s }, { x: p.x - nx * 0.07 * s, y: p.y - ny * 0.07 * s }, 0.03 * s, col);
+      }
+      line(headPt(r, -0.02, -0.12), headPt(r, 0.03, -0.06), 0.022 * s, col);
+      line(headPt(r, 0.04, -0.13), headPt(r, 0.06, -0.07), 0.022 * s, col);
+    } else if (pat === 'tuxedo') {
+      const F3 = spineFrame(r, 3), F4 = spineFrame(r, 4);
+      drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.55 + F4.t.x * 0.05 * s, F4.p.y - F4.n.y * r.dn[4] * 0.55 + F4.t.y * 0.05 * s, 0.11 * s, 0.13 * s, Math.atan2(F4.t.y, F4.t.x), BIB);
+      drawEll(F3.p.x - F3.n.x * r.dn[3] * 0.85, F3.p.y - F3.n.y * r.dn[3] * 0.85, 0.16 * s, 0.07 * s, Math.atan2(F3.t.y, F3.t.x), BIB);
+      const m = headPt(r, 0.11, 0.05);
+      drawEll(m.x, m.y, 0.07 * s * (0.6 + 0.4 * af), 0.06 * s, r.head.rot, BIB);
+    } else if (pat === 'calico') {
+      const patch = (i, v, rx, ry, col) => {
+        const F = spineFrame(r, i), p = F.p;
+        drawEll(p.x + F.n.x * v * s, p.y + F.n.y * v * s, rx * s, ry * s, Math.atan2(F.t.y, F.t.x), col);
+      };
+      patch(0, 0.07, 0.15, 0.1, CALICO_ORANGE);
+      patch(2, 0.1, 0.11, 0.08, CALICO_DARK);
+      patch(3, 0.06, 0.08, 0.07, CALICO_ORANGE);
+      const hp = headPt(r, -0.04, -0.06);
+      drawEll(hp.x, hp.y, 0.09 * s, 0.08 * s, r.head.rot, CALICO_DARK);
+      const ep = headPt(r, 0.02, -0.1);
+      drawEll(ep.x, ep.y, 0.06 * s, 0.05 * s, r.head.rot, CALICO_ORANGE);
+      drawPath(tail.slice(4), tail.slice(4).map(() => 0.09 * s), CALICO_ORANGE);
+      drawPath(tail.slice(7), tail.slice(7).map(() => 0.09 * s), CALICO_DARK);
+    } else if (pat === 'points') {
+      const pt = pointColor(pal);
+      const m = headPt(r, 0.09, 0.02);
+      drawEll(m.x, m.y, 0.1 * s * (0.6 + 0.4 * af), 0.09 * s, r.head.rot, pt);
+      drawPoly(earPts(r, false), pt); drawPoly(earPts(r, true), pt);
+      drawPath(tail.slice(3), tail.slice(3).map(() => 0.1 * s), pt);
+    }
+    ctx.restore();
+  }
+  function drawEyes(r, pal) {
+    const s = r.s;
+    if (!eyesClosed()) {
+      const e = headPt(r, 0.058, -0.02);
+      drawEll(e.x, e.y, Math.max(0.6, 0.021 * s), Math.max(0.8, 0.029 * s), r.head.rot, pal.eye);
+    } else {
+      const happy = cat.state === 'pet' || cat.state === 'nuzzle';
+      const a = headPt(r, 0.028, -0.02), b = headPt(r, 0.09, -0.02), c = headPt(r, 0.059, happy ? -0.05 : 0.01);
+      ctx.strokeStyle = settings.pattern === 'points' ? '#2a2420' : pal.closed; ctx.lineWidth = Math.max(1, 0.017 * s); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo(c.x, c.y, b.x, b.y); ctx.stroke();
+    }
+  }
+  function drawCat() {
+    const r = cat.rig, s = r.s, pal = COAT();
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    const grow = p => { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; };
+    r.sp.forEach(grow); tail.forEach(grow); grow(r.head);
+    r.legs.forEach(Lg => { grow(Lg.K); grow(Lg.P); });
+    const pad = 0.42 * s * Math.max(1, settings.girth);
+    if (![x0, y0, x1, y1].every(Number.isFinite)) return;
+    x0 = Math.floor(x0 - pad); y0 = Math.floor(y0 - pad); x1 = Math.ceil(x1 + pad); y1 = Math.ceil(y1 + pad);
+    const pw = Math.ceil((x1 - x0) * dpr), ph = Math.ceil((y1 - y0) * dpr);
+    if (layer.width < pw || layer.height < ph) { layer.width = Math.max(pw, layer.width); layer.height = Math.max(ph, layer.height); }
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.clearRect(0, 0, layer.width, layer.height);
+    lctx.setTransform(dpr, 0, 0, dpr, -x0 * dpr, -y0 * dpr);
+    ctx = lctx;
+    drawBody(r, pal);
+    drawEyes(r, pal);
+    ctx = stageCtx;
+    // A soft, thin rim so white bibs, socks and light coats still read against white pages.
+    ctx.save();
+    ctx.shadowColor = 'rgba(45, 35, 25, 0.5)';
+    ctx.shadowBlur = Math.max(1.5, 0.035 * s) * dpr;
+    ctx.drawImage(layer, 0, 0, pw, ph, x0, y0, pw / dpr, ph / dpr);
+    ctx.restore();
+  }
+
+  function drawHeart(x, y, sz, col) {
+    ctx.fillStyle = col; ctx.beginPath();
+    ctx.moveTo(x, y + sz * 0.35);
+    ctx.bezierCurveTo(x - sz, y - sz * 0.35, x - sz * 0.45, y - sz * 1.05, x, y - sz * 0.45);
+    ctx.bezierCurveTo(x + sz * 0.45, y - sz * 1.05, x + sz, y - sz * 0.35, x, y + sz * 0.35);
+    ctx.fill();
+  }
+  function drawParticles() {
+    const s = S();
+    for (const p of parts) {
+      ctx.globalAlpha = Math.min(1, p.life * 4) * (1 - p.life / p.max);
+      if (p.k === 'heart') drawHeart(p.x, p.y, 0.08 * s * (0.8 + p.life * 0.3), theme.heart);
+      else if (p.k === 'scratch') {
+        // Claw marks drawn on the cat's layer only; the page itself is untouched.
+        ctx.strokeStyle = theme.muted; ctx.lineWidth = Math.max(1, 0.012 * s); ctx.lineCap = 'round';
+        for (let k = 0; k < 3; k++) {
+          const yy = p.y + 2 + k * Math.max(1.6, 0.022 * s);
+          ctx.beginPath(); ctx.moveTo(p.x - p.dir * 0.07 * s, yy + 1); ctx.lineTo(p.x + p.dir * 0.05 * s, yy); ctx.stroke();
+        }
+      }
+      else if (p.k === 'vscratch') {
+        ctx.strokeStyle = theme.muted; ctx.lineWidth = Math.max(1, 0.012 * s); ctx.lineCap = 'round';
+        for (let k = 0; k < 3; k++) {
+          const xx = p.x - p.dir * k * Math.max(1.6, 0.02 * s);
+          ctx.beginPath(); ctx.moveTo(xx, p.y); ctx.lineTo(xx - p.dir * 0.5, p.y + 0.2 * s); ctx.stroke();
+        }
+      }
+      else {
+        ctx.fillStyle = theme.muted;
+        ctx.font = `700 ${Math.round(0.17 * s * (0.8 + p.life * 0.25))}px "Bricolage Grotesque", sans-serif`;
+        ctx.fillText(p.k === 'q' ? '?' : 'z', p.x, p.y);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawSkeleton() {
+    const r = cat.rig, col = theme.accent;
+    ctx.save();
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+    ctx.font = '500 10px "JetBrains Mono", monospace';
+    ctx.setLineDash([4, 3]);
+    for (const p of plats) {
+      ctx.beginPath(); ctx.moveTo(p.x0 + 1, p.y); ctx.lineTo(p.x1 - 1, p.y); ctx.stroke();
+      ctx.fillText(p.label, p.x0 + 4, p.id === 'floor' ? p.y + 9 : p.y - 4);
+    }
+    let a = null;
+    if (cat.state === 'air') a = cat.air;
+    else if (cat.plan) a = arcParams(cat.plan.tx, cat.plat.y, cat.plan.lx, cat.plan.to.y);
+    if (a) {
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) { const t = a.T * i / 24; const x = a.x0 + a.vx * t, y = a.y0 + a.vy0 * t + 0.5 * a.g * t * t; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    const dot = (p, rad = 2.2) => { ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, TAU); ctx.fill(); };
+    const poly = pts => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); };
+    poly(r.sp); r.sp.forEach(p => dot(p));
+    poly([r.chest, r.head]); dot(r.head, 3);
+    r.legs.forEach((L, i) => {
+      ctx.globalAlpha = i % 2 ? 0.45 : 1;
+      poly([L.A, L.K, L.D, L.P]); dot(L.K, 1.8); dot(L.D, 1.8);
+      // planted paws get a ring
+      if (!feet[i].swing && cat.state !== 'air') { ctx.beginPath(); ctx.arc(L.P.x, L.P.y, 3.5, 0, TAU); ctx.stroke(); } else dot(L.P, 1.8);
+    });
+    ctx.globalAlpha = 1;
+    poly(tail); tail.forEach(p => dot(p, 1.3));
+    ctx.restore();
+  }
+
+  // ---------- frame ----------
+  const statusEl = document.getElementById('status');
+  const LABELS = { walk: 'Walking', stalk: 'Stalking your cursor', crouch: 'Getting ready to jump', air: 'Jumping', land: 'Landing', sit: 'Sitting', sleep: 'Napping', stretch: 'Stretching', idle: 'Looking around', pet: 'Enjoying the pets', nuzzle: 'Head-bumping your cursor', chase: 'Chasing its prey', swat: 'Swatting something off the page', bat: 'Caught it!', scratch: 'Scratching', loaf: 'Loafing', zoom: 'Zoomies!', probe: 'Pawing behind the card' };
+  let statusT = 0;
+  function updateStatus(dt) {
+    statusT -= dt; if (statusT > 0) return; statusT = 0.25;
+    let label = cat.state === 'sit' && cat.groom > 0 ? 'Grooming' : LABELS[cat.state];
+    if (cat.state === 'wallscratch' && cat.wall) label = cat.wall.id.startsWith('win') ? 'Scratching the side of the window' : 'Scratching the card';
+    if ((cat.state === 'walk' || cat.state === 'zoom' || cat.state === 'chase') && cat.gait && cat.gait !== 'walk' && gaitOn) label += ` (${cat.gait})`;
+    if ((cat.state === 'crouch' && cat.plan && cat.plan.pounce) || (cat.state === 'air' && cat.air && cat.air.pounce)) label = 'Pouncing on your cursor';
+    statusEl.textContent = `${label} · energy ${Math.round(cat.energy * 100)}%`;
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const raw = Math.min(0.05, (now - last) / 1000); last = now;
+    const dt = raw * settings.speed; T += dt;
+    update(dt);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawPage();
+    drawCat();
+    drawParticles();
+    if (settings.skel) drawSkeleton();
+    updateStatus(raw);
+    requestAnimationFrame(frame);
+  }
+
+  function placeCat(plat, x) {
+    cat.plat = plat; cat.x = x; cat.y = plat.y; cat.vx = 0; cat.vy = 0; cat.air = null; gaitOn = false;
+    cat.rig = computeRig();
+    feet.forEach((ft, i) => { ft.x = restX(i, cat.rig); ft.y = cat.y; ft.ang = poseAng(i); ft.swing = false; ft.raised = false; });
+    cat.rig.legs = [0, 1, 2, 3].map(i => legChain(i, cat.rig));
+    tail.forEach(p => { p.x = cat.rig.hip.x; p.y = cat.rig.hip.y; });
+    for (let k = 0; k < 30; k++) updateTail(0.05, cat.rig);
+  }
+
+  function resize() {
+    const nw = Math.round(canvas.clientWidth) || 600;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(canvas.clientWidth * dpr); canvas.height = Math.round(STAGE_H * dpr);
+    if (nw === W && plats.length) return;
+    const old = cat.plat ? { ...cat.plat } : null;
+    W = nw; H = STAGE_H;
+    buildPlatforms();
+    if (!old) { placeCat(plats[1], plats[1].x0 + (plats[1].x1 - plats[1].x0) * 0.62); return; }
+    const np = plats.find(p => p.id === old.id) || plats[0];
+    const rel = clamp((cat.x - old.x0) / (old.x1 - old.x0), 0, 1);
+    prey = null; cat.swatItem = null; cat.intent = null; cat.wall = null; cat.zoomLeft = 0;
+    if (['air', 'crouch', 'walk', 'stalk', 'chase', 'zoom', 'swat', 'bat', 'scratch', 'wallscratch', 'probe'].includes(cat.state)) { cat.plan = null; setState('idle', 1); }
+    placeCat(np, np.x0 + rel * (np.x1 - np.x0));
+  }
+
+  // ---------- interaction ----------
+  function local(e) { const b = canvas.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; }
+  function overCat(p) {
+    const r = cat.rig, s = S();
+    return [r.sp[1], r.sp[3], r.head].some(q => Math.hypot(p.x - q.x, p.y - q.y) < 0.24 * s + 6);
+  }
+  function question() {
+    const r = cat.rig, s = S();
+    parts.push({ k: 'q', x: r.head.x + r.fa * 0.1 * s, y: r.head.y - 0.18 * s, vx: 0, vy: -0.15 * s, life: 0, max: 1.4 });
+  }
+  function callTo(x, y) {
+    const s = S();
+    let best = null, bd = 1e9;
+    for (const p of plats) {
+      if (x < p.x0 || x > p.x1) continue;
+      if (y < p.y - 0.9 * s || y > p.y + (p.id === 'floor' ? 20 : p.h)) continue;
+      const d = Math.abs(y - p.y);
+      if (d < bd) { bd = d; best = p; }
+    }
+    if (!best || cat.state === 'air') { cat.glance = { x, y }; cat.glanceT = 2; return; }
+    const m = 0.4 * s, lx = clamp(x, best.x0 + m, best.x1 - m);
+    if (best === cat.plat) { cat.plan = null; goWalk(lx); return; }
+    const P = cat.plat;
+    if (P.y - best.y > maxUp()) { question(); cat.glance = { x, y }; cat.glanceT = 2; return; }
+    const dir = Math.sign(lx - cat.x) || cat.f;
+    let tx = clamp(lx - dir * 0.9 * s, P.x0 + m, P.x1 - m);
+    if (Math.abs(lx - tx) > maxX()) tx = clamp(lx - Math.sign(lx - tx) * maxX() * 0.9, P.x0 + m, P.x1 - m);
+    if (Math.abs(lx - tx) > maxX()) { question(); return; }
+    cat.plan = { to: best, lx, tx };
+    goWalk(tx);
+  }
+  canvas.addEventListener('pointermove', e => {
+    const p = local(e); mouse.x = p.x; mouse.y = p.y; mouse.active = true;
+    if (Math.hypot(p.x - mouse.sx, p.y - mouse.sy) > 4) { mouse.sx = p.x; mouse.sy = p.y; mouse.stillSince = performance.now(); }
+    canvas.style.cursor = overCat(p) ? 'pointer' : 'default';
+  });
+  canvas.addEventListener('pointerleave', () => { mouse.active = false; });
+  canvas.addEventListener('pointerdown', e => {
+    const p = local(e); mouse.x = p.x; mouse.y = p.y;
+    mouse.stillSince = performance.now(); mouse.sx = p.x; mouse.sy = p.y; cat.intent = null; cat.cool = Math.max(cat.cool, 3);
+    if (overCat(p)) { if (cat.state !== 'air') { cat.plan = null; cat.vx = 0; setState('pet', 2.4); cat.heartT = 0; } }
+    else callTo(p.x, p.y);
+  });
+
+  const $ = id => document.getElementById(id);
+  const setSize = v => { settings.size = v; $('size').value = v; $('sizeOut').textContent = v + 'px'; };
+  $('size').addEventListener('input', e => setSize(+e.target.value));
+  $('realSize').addEventListener('click', () => setSize(32));
+  $('speed').addEventListener('input', e => { settings.speed = +e.target.value; $('speedOut').textContent = settings.speed.toFixed(1) + '×'; });
+  document.querySelectorAll('input[name="coat"]').forEach(r => r.addEventListener('change', e => { settings.coat = e.target.value; }));
+  document.querySelectorAll('input[name="pattern"]').forEach(r => r.addEventListener('change', e => { settings.pattern = e.target.value; }));
+  $('skel').addEventListener('change', e => { settings.skel = e.target.checked; });
+  $('girth').addEventListener('input', e => {
+    const v = settings.girth = +e.target.value;
+    $('girthOut').textContent = v < 0.95 ? 'Slim' : v < 1.3 ? 'Sturdy' : v < 1.55 ? 'Chonky' : 'Absolute unit';
+  });
+  $('activity').addEventListener('input', e => {
+    const v = settings.activity = +e.target.value;
+    $('activityOut').textContent = v < 0.25 ? 'Lazy' : v < 0.6 ? 'Easygoing' : v < 0.85 ? 'Playful' : 'Hyper';
+  });
+  const busy = () => cat.state === 'air' || cat.state === 'crouch';
+  $('doWalk').addEventListener('click', () => {
+    if (busy()) return;
+    const P = cat.plat, s = S(), m = 0.4 * s;
+    const far = (cat.x - P.x0) > (P.x1 - cat.x) ? P.x0 + m : P.x1 - m;
+    cat.plan = null; goWalk(far);
+  });
+  $('doPlay').addEventListener('click', () => {
+    if (busy() || prey) return;
+    cat.preyCool = 0;
+    const toys = playCandidates();
+    if (!toys.length) { question(); return; }
+    const cost = it => Math.abs(it.hx - cat.x) + (it.plat === cat.plat ? 0 : 400);
+    cat.plan = null;
+    goGrab(toys.reduce((b, it) => cost(it) < cost(b) ? it : b));
+  });
+  $('doScratch').addEventListener('click', () => { if (busy()) return; cat.plan = null; cat.zoomLeft = 0; goScratch(); });
+  $('doZoom').addEventListener('click', () => { if (busy()) return; cat.plan = null; cat.zoomLeft = 6; zoomStep(); });
+  $('doNap').addEventListener('click', () => { if (busy()) return; cat.plan = null; cat.vx = 0; cat.energy = Math.min(cat.energy, 0.2); setState('sleep', rr(10, 16)); });
+  $('doWake').addEventListener('click', () => { if (cat.state === 'sleep') setState('stretch', 2.3); });
+  $('doGroom').addEventListener('click', () => { if (busy()) return; cat.plan = null; cat.vx = 0; setState('sit', 5); cat.groomIn = 0.5; });
+  $('doJump').addEventListener('click', () => {
+    if (busy()) return;
+    const j = jumpOptions();
+    if (!j.length) { question(); return; }
+    cat.plan = j[Math.floor(rand() * j.length)];
+    goWalk(cat.plan.tx);
+  });
+
+  readTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readTheme);
+  new MutationObserver(readTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  resize();
+  new ResizeObserver(resize).observe(canvas);
+  requestAnimationFrame(frame);
+})();
+</script>

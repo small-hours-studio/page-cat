@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Page Cat",
+  "short_name": "Page Cat",
+  "version": "0.1.0",
+  "description": "A small, hand-animated cat that lives on the pages you visit. It wanders, naps, scratches, and now and then hunts your cursor.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Page Cat",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "optional_host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "commands": {
+    "toggle-cat": {
+      "suggested_key": { "default": "Alt+Shift+C" },
+      "description": "Call the cat to this tab, or send it away"
+    }
+  },
+  "minimum_chrome_version": "105"
+}

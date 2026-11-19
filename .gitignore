@@ -1,0 +1,6 @@
+# build output (rebuild with page-cat/tools/package.ps1)
+page-cat/dist/
+# Codex run logs
+page-cat/store/codex/run.log
+__pycache__/
+.claude/

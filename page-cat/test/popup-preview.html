@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<title>Popup preview</title>
+<link rel="stylesheet" href="popup.css">
+<style>html { background: #888; } body { margin: 20px auto; box-shadow: 0 4px 24px rgba(0,0,0,.3); }</style>
+</head>
+<body>
+<script>
+  // Stand-ins for the Chrome extension APIs so the popup can be previewed on a normal page.
+  const store = { pagecat: { size: 32, girth: 1.2, activity: 0.5, coat: 'ginger', pattern: 'tabby', moodCycle: true, pagePlay: true, cursorPlay: true }, pagecatAlways: true, pagecatBlocked: [] };
+  window.chrome = {
+    runtime: { id: 'preview' },
+    storage: { sync: { async get(k) { const o = {}; [].concat(k).forEach(x => o[x] = store[x]); return o; }, async set(o) { Object.assign(store, o); } }, onChanged: { addListener() {} } },
+    permissions: { async contains() { return true; }, async request() { return true; }, async remove() { return true; } },
+    tabs: { async query() { return [{ id: 1, url: 'https://example.com/article' }]; }, async sendMessage() { return { visible: true, mood: 'playful' }; } },
+    scripting: { async executeScript() {}, async getRegisteredContentScripts() { return []; }, async registerContentScripts() {}, async unregisterContentScripts() {} },
+  };
+</script>
+<script type="module">
+  const html = await (await fetch('popup.html')).text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script').forEach(s => s.remove());
+  document.body.innerHTML = doc.body.innerHTML;
+  await import('./popup.js');
+</script>
+</body>
+</html>

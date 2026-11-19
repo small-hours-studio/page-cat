@@ -1,0 +1,9 @@
+Created the five PNGs in `store/codex/` using the built-in image generation tool:
+
+- [logo-a.png](store/codex/logo-a.png) — 1024 × 1024
+- [logo-b.png](store/codex/logo-b.png) — 1024 × 1024
+- [logo-c.png](store/codex/logo-c.png) — 1024 × 1024
+- [promo-wide.png](store/codex/promo-wide.png) — 1536 × 1024
+- [marquee.png](store/codex/marquee.png) — 1400 × 560
+
+The prompts followed the requested ginger-and-off-white palette, minimal flat style, cat poses, page elements, and text-free compositions.
