@@ -123,6 +123,8 @@
     loaf:    { hipH: .13, chestH: .15, len: .85,  curl: 0, headFwd: -.01, headDrop: .02, arch: .02,  fr: .06, hr: .05,  aF: 1.6,  aH: 1.45, lie: 1, rump: .3 },
     run:     { hipH: .37, chestH: .34, len: 1.08, curl: 0, headFwd: .06, headDrop: .06,  arch: .05,  fr: .03, hr: 0,    aF: .2,   aH: .4 },
     wall:    { hipH: .2,  chestH: .64, len: .38,  curl: 0, headFwd: -.03, headDrop: -.08, arch: -.03, fr: .2, hr: .06,  aF: .2,   aH: 1.05, rump: .4 },
+    // Held up by the scruff: the body shape comes from the hanging rig; this just keeps it uncurled.
+    hang:    { hipH: .4,  chestH: .4,  len: 1,    curl: 0, headFwd: 0,    headDrop: 0,    arch: -.03, fr: .03, hr: .03,  aF: .5,   aH: .15, rump: .15 },
   };
   Object.values(POSES).forEach(p => { if (p.rump == null) p.rump = 0; if (p.lie == null) p.lie = 0; });
   const TAILP = {
@@ -136,6 +138,7 @@
     pet:     { elev: 1.5,  curl: .12,  sway: .3,  sf: 1.2 },
     stalk:   { elev: .12,  curl: .02,  sway: .45, sf: 6.0 },
     wall:    { elev: -.15, curl: .06,  sway: .25, sf: 1.4 },
+    hang:    { elev: -1.45, curl: .1,  sway: .15, sf: 1.5 },
   };
 
   // ---------- gait ----------
@@ -176,6 +179,7 @@
       case 'zoom': return 'run';
       case 'swat': return 'stand';
       case 'wallscratch': return 'wall';
+      case 'held': return 'hang';
       case 'bat': return 'crouch';
       case 'scratch': return 'scratch';
       case 'loaf': return 'loaf';
@@ -200,6 +204,7 @@
       case 'loaf': return 'sit';
       case 'probe': return 'crouch';
       case 'wallscratch': return 'wall';
+      case 'held': return 'hang';
       case 'sleep': return 'sleep';
       case 'air': return 'air';
       case 'crouch': return 'crouch';
@@ -548,6 +553,12 @@
   function endState() {
     if (cat.state === 'swat' || cat.state === 'probe') { if (prey) setState('chase'); else setState('idle', 1); return; }
     if (cat.state === 'bat') { sendHome(); setState('sit', rr(2.5, 3.5)); cat.groomIn = 0.9; return; }
+    if (cat.state === 'land' && cat.afterDrop) {
+      // Put down somewhere new: sit and groom, with dignity.
+      cat.afterDrop = false;
+      setState('sit', rr(2.5, 4)); cat.groomIn = 0.6;
+      return;
+    }
     if (cat.state === 'land' && cat.landPounce) {
       cat.landPounce = false;
       setState('sit', rr(2.5, 3.5)); cat.groomIn = 0.7;
@@ -622,7 +633,7 @@
     // Keep the surfaces we care about in sync with the page (it may have scrolled).
     refreshPlat(cat.plat);
     if (cat.plan) refreshPlat(cat.plan.to);
-    if (cat.state !== 'air' && cat.plat && !cat.plat.floor) {
+    if (cat.state !== 'air' && cat.state !== 'held' && cat.plat && !cat.plat.floor) {
       const p = cat.plat;
       if (p.gone || p.y > H - 2) { cat.plat = floor; cat.y = floor.y; cat.plan = null; feet.forEach(ft => { ft.y = floor.y; }); if (cat.state === 'crouch') setState('idle', 0.5); }
       else if (p.y < 30 || cat.x < p.x0 - 0.25 * s || cat.x > p.x1 + 0.25 * s) fallFrom(p);
@@ -641,7 +652,7 @@
     // the middle of the screen.
     cat.hopCool = Math.max(0, cat.hopCool - dt);
     if (performance.now() - lastScrollT < 700 && cat.hopCool <= 0 && !prey && cat.plat
-        && !['air', 'crouch', 'chase', 'swat', 'bat', 'probe', 'pet', 'nuzzle', 'stalk'].includes(cat.state)) {
+        && !['air', 'crouch', 'chase', 'swat', 'bat', 'probe', 'pet', 'nuzzle', 'stalk', 'held'].includes(cat.state)) {
       const p = cat.plat;
       if (p.floor || p.y < H * 0.25 || p.y > H * 0.85) {
         const j = scrollHop();
@@ -686,6 +697,22 @@
         if (cat.state !== 'chase' && (Math.abs(cat.tx - cat.x) < 0.02 * s || (dir !== 0 && Math.sign(cat.tx - cat.x) !== dir))) {
           cat.x = cat.tx; cat.vx = 0; arrive();
         }
+        break;
+      }
+      case 'held': {
+        // Hanging from the cursor by the scruff: the body swings like a pendulum, lagging behind
+        // when you drag and settling when you stop.
+        const h = cat.held;
+        if (!h) { setState('idle', 0.5); break; }
+        if (performance.now() - h.pt > 60) h.vx *= Math.exp(-dt * 12);
+        const ax = clamp((h.vx - h.lvx) / Math.max(dt, 1e-3), -80 * s, 80 * s);
+        h.lvx = h.vx;
+        const L = 0.5 * s, g0 = 30 * s;
+        h.av += ((-g0 * Math.sin(h.ang) - ax * Math.cos(h.ang)) / L - 3.5 * h.av) * dt;
+        h.ang = clamp(h.ang + h.av * dt, -1.1, 1.1);
+        cat.x = h.x + Math.sin(h.ang) * 0.95 * s;
+        cat.y = h.y + Math.cos(h.ang) * 0.95 * s;
+        cat.vx = 0; cat.vy = 0;
         break;
       }
       case 'crouch':
@@ -749,7 +776,7 @@
         }
         if (cat.timer <= 0) endState();
     }
-    if (cat.state !== 'air' && cat.plat) {
+    if (cat.state !== 'air' && cat.state !== 'held' && cat.plat) {
       cat.x = clamp(cat.x, cat.plat.x0 + 0.2 * s, cat.plat.x1 - 0.2 * s);
       cat.y = cat.plat.y;
     }
@@ -759,7 +786,8 @@
       const a = cat.air;
       const velAng = Math.atan2(cat.vy, Math.abs(a.vx) + 0.3 * s);
       const aimAng = Math.atan2(a.y1 - (cat.y - 0.42 * s), Math.abs(a.x1 - cat.x) + 0.3 * s);
-      const pt = clamp(lerp(velAng, aimAng, 0.35), -1.15, 1.0);
+      // A dropped cat rights itself and comes down level, feet first.
+      const pt = a.drop ? 0 : clamp(lerp(velAng, aimAng, 0.35), -1.15, 1.0);
       cat.pitch += (pt - cat.pitch) * damp(9, dt);
       cat.airBlend += (1 - cat.airBlend) * damp(12, dt);
     } else {
@@ -859,6 +887,11 @@
       const cx = cat.x, cy = cat.y - 0.42 * s, h = half * 1.15;
       hip = { x: cx - fa * Math.cos(p) * h, y: cy - Math.sin(p) * h };
       chest = { x: cx + fa * Math.cos(p) * h, y: cy + Math.sin(p) * h };
+    } else if (cat.state === 'held' && cat.held) {
+      // Scruff in hand: shoulders just under the grip, body hanging straight down from there.
+      const hd = cat.held, D = { x: Math.sin(hd.ang), y: Math.cos(hd.ang) };
+      chest = { x: hd.x - fa * 0.03 * s + D.x * 0.17 * s, y: hd.y + D.y * 0.17 * s };
+      hip = { x: chest.x + D.x * 0.5 * s, y: chest.y + D.y * 0.5 * s };
     } else {
       const gw = gaitOn ? clamp(Math.abs(cat.vx) / (0.5 * s), 0, 1) * (1 + Math.max(0, Math.abs(cat.vx) / s - 1) * 1.2) : 0;
       const bh = Math.cos(4 * Math.PI * gaitPhase) * 0.008 * s * gw;
@@ -936,6 +969,10 @@
       hx = lerp(hx, ahx, cat.airBlend); hy = lerp(hy, ahy, cat.airBlend);
       tiltRaw = lerp(tiltRaw, at, cat.airBlend);
     }
+    if (cat.state === 'held' && cat.held) {
+      // The head sits just in front of the hand, chin tucked a little.
+      hx = cat.held.x + fa * 0.1 * s; hy = cat.held.y + 0.03 * s; tiltRaw = 0.2;
+    }
     return { s, fa, f, hip, chest, sp, up, dn, sh, shF, hp, hpF, head: { x: hx, y: hy, rot: tiltRaw * f }, legs: null };
   }
   function headPt(r, lu, lv) {
@@ -964,8 +1001,8 @@
     const res = ik(A, D, L.upper * s, L.lower * s, front ? sg : -sg);
     const ox = res.end.x - D.x, oy = res.end.y - D.y;
     let K = res.knee, Dj = res.end, Pw = { x: ft.x + ox, y: ft.y + oy };
-    if (cat.state !== 'air') {
-      const tuck = Math.max(clamp((cat.pose.curl - 0.15) / 0.6, 0, 1), cat.pose.lie || 0);
+    if (cat.state !== 'air' && cat.state !== 'held') {
+      const tuck =Math.max(clamp((cat.pose.curl - 0.15) / 0.6, 0, 1), cat.pose.lie || 0);
       if (tuck > 0) {
         const pawT = { x: A.x + fa * (front ? 0.12 : 0.05) * s, y: cat.y - 0.01 * s };
         const kneeT = { x: lerp(A.x, pawT.x, 0.45), y: lerp(A.y, pawT.y, 0.55) };
@@ -1035,7 +1072,10 @@
       for (let i = 0; i < 4; i++) {
         const ft = feet[i], A = anchorOf(i, r), front = i < 2, far = i % 2 === 1;
         let tgt, ta, k = 12;
-        if (front) {
+        if (a.drop) {
+          // Dropped: all four legs reach down for the landing.
+          tgt = front ? at(A, 0.03, 0.3) : at(A, -0.02, 0.3); ta = front ? 0 : 0.45; k = 10;
+        } else if (front) {
           if (prog < (a.reach ? 0.2 : 0.45)) { tgt = at(A, 0.07, 0.15); ta = 1.4; }
           else {
             const Lx = a.reach ? a.reach.x + fa * (far ? -0.03 : 0.02) * s : a.x1 + fa * (far ? 0.06 : 0.12) * s;
@@ -1049,6 +1089,20 @@
         }
         if (far) { tgt.x -= fa * 0.03 * s; }
         ft.x += (tgt.x - ft.x) * damp(k, dt); ft.y += (tgt.y - ft.y) * damp(k, dt); ft.ang += (ta - ft.ang) * damp(k, dt);
+        ft.swing = false; ft.raised = false;
+      }
+      return;
+    }
+    if (cat.state === 'held' && cat.held) {
+      // Dangling: front paws hang loose a little forward, hind paws hang below the hips.
+      const D = { x: Math.sin(cat.held.ang), y: Math.cos(cat.held.ang) };
+      for (let i = 0; i < 4; i++) {
+        const ft = feet[i], A = anchorOf(i, r), front = i < 2, far = i % 2 === 1;
+        const len = (front ? 0.32 : 0.34) * s;
+        const tx = A.x + D.x * len + fa * (front ? 0.13 : 0.06) * s - (far ? fa * 0.04 * s : 0) + (front && far ? 0.02 * s * D.y : 0);
+        const ty = A.y + D.y * len;
+        ft.x += (tx - ft.x) * damp(9, dt); ft.y += (ty - ft.y) * damp(9, dt);
+        ft.ang += ((front ? 0.5 : 0.15) - ft.ang) * damp(9, dt);
         ft.swing = false; ft.raised = false;
       }
       return;
@@ -1141,7 +1195,7 @@
       a += tp.curl + Math.sin(T * tp.sf - i * 0.55) * tp.sway * 0.18 * (i / TAIL_N);
       const tx = tail[i - 1].x - fa * Math.cos(a) * seg, ty = tail[i - 1].y - Math.sin(a) * seg;
       tail[i].x += (tx - tail[i].x) * k; tail[i].y += (ty - tail[i].y) * k;
-      if (cat.state !== 'air' && tail[i].y > gy) tail[i].y = gy;
+      if (cat.state !== 'air' && cat.state !== 'held' && tail[i].y > gy) tail[i].y = gy;
       const vx = tail[i].x - tail[i - 1].x, vy = tail[i].y - tail[i - 1].y, d = Math.hypot(vx, vy) || 1;
       tail[i].x = tail[i - 1].x + vx / d * seg; tail[i].y = tail[i - 1].y + vy / d * seg;
     }
@@ -1602,12 +1656,70 @@
   addEventListener('pointerdown', () => { mouse.stillSince = performance.now(); cat.intent = cat.intent && cat.intent.stamp != null ? null : cat.intent; cat.cool = Math.max(cat.cool, 3); }, { passive: true, capture: true });
   document.addEventListener('pointerleave', () => { mouse.active = false; }, { passive: true });
   addEventListener('blur', () => { mouse.active = false; });
-  hit.addEventListener('pointerdown', e => {
-    e.preventDefault(); e.stopPropagation();
-    if (cat.state === 'air') return;
+  // Click the cat to pet it; press and drag to pick it up by the scruff; let go to drop it.
+  let press = null;
+  hit.style.cursor = 'grab';
+  hit.title = 'Click to pet, drag to pick up';
+  function petCat() {
+    if (cat.state === 'air' || cat.state === 'held') return;
     cat.plan = null; cat.vx = 0; cat.zoomLeft = 0;
     setState('pet', 2.4); cat.heartT = 0;
+  }
+  function startHold(x, y) {
+    if (prey) sendHome(true);
+    cat.plan = null; cat.intent = null; cat.zoomLeft = 0; cat.air = null; cat.vx = 0; cat.vy = 0; gaitOn = false;
+    cat.pose.curl = Math.min(cat.pose.curl, 0.3); cat.pose.lie = Math.min(cat.pose.lie, 0.3);
+    cat.held = { x, y, pt: performance.now(), vx: 0, vy: 0, lvx: 0, ang: 0, av: 0 };
+    setState('held', 1e9);
+    hit.style.cursor = 'grabbing';
+  }
+  function moveHold(x, y) {
+    const h = cat.held, now = performance.now(), dt = Math.max(1, now - h.pt) / 1000;
+    h.vx = lerp(h.vx, (x - h.x) / dt, 0.5); h.vy = lerp(h.vy, (y - h.y) / dt, 0.5);
+    h.x = x; h.y = y; h.pt = now;
+  }
+  function releaseHold() {
+    const h = cat.held;
+    hit.style.cursor = 'grab';
+    if (!h) return;
+    const moving = performance.now() - h.pt < 80 ? 0.6 : 0; // a flick carries a little momentum
+    cat.held = null;
+    dropCat(h.vx * moving, h.vy * moving);
+  }
+  // Fall from where it was let go and land feet-first on whatever is below.
+  function dropCat(vx, vy) {
+    const s = S(), g0 = 34 * s;
+    vx = clamp(vx, -3 * s, 3 * s); vy = clamp(vy, -2.5 * s, 3 * s);
+    const x0 = clamp(cat.x, 2, W - 2), y0 = Math.min(cat.y, floor.y - 1);
+    const fall = q => { const d = Math.max(0, q.y - y0); return (vy + Math.sqrt(vy * vy + 2 * g0 * d)) / g0; };
+    let q = platformUnder(x0, y0) || floor, t = fall(q);
+    const q2 = platformUnder(clamp(x0 + vx * t, 0, W), y0) || floor;
+    if (q2 !== q) { q = q2; t = fall(q); }
+    t = Math.max(t, 0.05);
+    const x1 = clamp(x0 + vx * t, q.x0 + 0.2 * s, q.x1 - 0.2 * s);
+    cat.air = { x0, y0, x1, y1: q.y, g: g0, vy0: vy, T: t, vx: (x1 - x0) / t, t: 0, to: q, drop: true };
+    cat.x = x0; cat.y = y0; cat.vx = cat.air.vx; cat.vy = vy;
+    cat.pitch = -1.4; // starts out hanging upright, then rights itself on the way down
+    cat.afterDrop = true;
+    setState('air');
+  }
+  hit.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    press = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    try { hit.setPointerCapture(e.pointerId); } catch (err) { /* old browsers */ }
   });
+  hit.addEventListener('pointermove', e => {
+    if (!press || e.pointerId !== press.id) return;
+    if (cat.state !== 'held' && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 6) startHold(e.clientX, e.clientY);
+    if (cat.state === 'held') moveHold(e.clientX, e.clientY);
+  });
+  hit.addEventListener('pointerup', e => {
+    if (!press || e.pointerId !== press.id) return;
+    e.preventDefault(); e.stopPropagation();
+    press = null;
+    if (cat.state === 'held') releaseHold(); else petCat();
+  });
+  hit.addEventListener('pointercancel', () => { press = null; if (cat.state === 'held') releaseHold(); });
   hit.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
 
   let scrollTimer = 0, lastScrollT = -1e9;
@@ -1742,6 +1854,7 @@
         return true;
       },
       pause() { running = false; cancelAnimationFrame(rafId); clearInterval(scanTimer); },
+      hold(x, y) { startHold(x, y); }, moveTo(x, y) { moveHold(x, y); }, release() { releaseHold(); },
       render() { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); g = ctx; drawPrey(); drawCat(); drawParticles(); },
     };
   }

@@ -98,6 +98,22 @@
       out.textContent = `SCROLLSTAT box=${(onBox / total * 100).toFixed(0)}% floor=${(onFloor / total * 100).toFixed(0)}% hops=${hops}`;
       document.body.appendChild(out);
     }
+    if (scene === 'hold') {
+      // Pick the cat up, drag it right, hold still, then let go over the tip card. Frame by t.
+      const t = +q.get('t') || 1;
+      let x = 300, y = 200;
+      d.placeOn(document.querySelector('h1'), 0.3, 'sit');
+      step(0.5);
+      const r = d.cat.rig; d.hold(r.head.x - 0.1 * 96, r.head.y);
+      x = r.head.x; y = r.head.y;
+      let time = 0;
+      const dt = 1 / 60;
+      while (time < t) {
+        if (time < 0.6) { x += 5; y += 1.5; d.moveTo(x, y); }          // drag right and down
+        if (time >= 1.6 && d.cat.state === 'held') d.release();          // let go
+        d.step(dt); time += dt;
+      }
+    }
     if (scene === 'nap') { d.placeOn(document.querySelector('.card'), 0.7, 'sleep'); step(4); }
     if (scene === 'play') {
       d.placeOn(firstP, 0.15, 'idle', 0.05);
