@@ -5,13 +5,13 @@ const COATS = [
   ['cream', '#f1e4cd', 'Cream'], ['white', '#f4f2ed', 'White'], ['brown', '#8a6a4f', 'Brown'],
 ];
 const PATTERNS = [['solid', 'Solid'], ['tabby', 'Tabby'], ['tuxedo', 'Tuxedo'], ['calico', 'Calico'], ['points', 'Colorpoint'],
-  ['locket', 'Black with locket'], ['tabbywhite', 'Tabby and white'], ['pastel', 'Pastel calico']];
+  ['locket', 'Boba'], ['tabbywhite', 'Moe'], ['pastel', 'Linda']];
 // These patterns come with their own colors.
 const OWN_COAT = {
   calico: 'Calico cats are white with orange and black patches',
-  locket: 'This one is black with a white locket',
-  tabbywhite: 'This one is a brown tabby with white',
-  pastel: 'This one is pale orange and white',
+  locket: 'Boba is black with a white locket',
+  tabbywhite: 'Moe is a brown tabby with white',
+  pastel: 'Linda is pale orange and white',
 };
 const MOOD_NAMES = { sleepy: 'Sleepy', chill: 'Chill', playful: 'Playful', hyper: 'Zoomies' };
 

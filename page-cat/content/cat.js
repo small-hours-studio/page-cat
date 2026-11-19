@@ -49,11 +49,11 @@
   // Patterns based on real cats also bring their own colors, so the coat picker doesn't apply to them.
   const OWN_COAT = {
     calico: CALICO,
-    // Black with a white locket on the chest, a white chin, and yellow-green eyes.
+    // Boba: black with a white locket on the chest, a white chin, and yellow-green eyes.
     locket: { coat: '#27272c', shade: '#1b1b1f', stripe: '#1b1b1f', eye: '#c5c45a', closed: '#8a8b95' },
-    // Brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
+    // Moe: brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
     tabbywhite: { coat: '#7e7466', shade: '#5f574b', stripe: '#2e2a25', eye: '#a4b06a', closed: '#3a342c' },
-    // Pale apricot and white with a few smoky patches and faint tail rings.
+    // Linda: pale apricot and white with a few smoky patches and faint tail rings.
     pastel: { coat: '#e8bb8c', shade: '#c79a6d', stripe: '#d29a68', eye: '#c7962b', closed: '#8c7660' },
   };
   const COAT = () => OWN_COAT[settings.pattern] || COATS[settings.coat] || COATS.ginger;
