@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Popup test</title>
+<link rel="stylesheet" href="../popup.css">
+</head>
+<body>
+<!-- Test-only: runs the real popup with stand-in chrome.* APIs (serve with tools/dev_server.py).
+     ?code=PC1... imports that code, renames the cat, then tries a broken code, and prints what happened. -->
+<script>
+  const store = {};
+  window.chrome = {
+    storage: { sync: {
+      get: async keys => Object.fromEntries([].concat(keys).filter(k => k in store).map(k => [k, structuredClone(store[k])])),
+      set: async obj => { Object.assign(store, structuredClone(obj)); },
+    } },
+    tabs: { query: async () => [{ id: 1, url: 'https://example.com/' }], sendMessage: async () => ({ visible: true, mood: 'chill' }) },
+    runtime: { sendMessage: async () => ({ visible: true }) },
+  };
+  window.__store = store;
+</script>
+<script type="module">
+  const html = await (await fetch('../popup.html')).text();
+  const body = new DOMParser().parseFromString(html, 'text/html').body;
+  body.querySelectorAll('script').forEach(s => s.remove());
+  document.body.prepend(...body.childNodes);
+  await import('../popup.js');
+  const q = new URLSearchParams(location.search), code = q.get('code');
+  if (code) {
+    const $ = id => document.getElementById(id), log = [];
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const submit = async text => { $('catCode').value = text; $('addCat').requestSubmit(); await wait(400); return $('catMsg').textContent; };
+    await wait(300);
+    log.push('import: ' + await submit(code));
+    log.push('again: ' + await submit(code));
+    log.push('broken: ' + await submit(code.slice(0, -3) + 'AAA'));
+    log.push('junk: ' + await submit('hello'));
+    const row = document.querySelector('.mycat');
+    row.querySelector('.link').click();
+    const input = row.querySelector('input');
+    input.value = 'Boba Fett';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await wait(300);
+    log.push('chip after rename: ' + document.querySelector('.mycat .chip').textContent);
+    log.push('note: ' + $('calicoNote').textContent);
+    await wait(400);
+    log.push('stored cats: ' + JSON.stringify(window.__store.pagecatCats.map(c => [c.id, c.name])));
+    log.push('stored pattern: ' + window.__store.pagecat.pattern);
+    const out = document.createElement('pre'); out.id = 'result'; out.textContent = 'POPUPTEST\n' + log.join('\n');
+    document.body.append(out);
+  }
+</script>
+</body>
+</html>

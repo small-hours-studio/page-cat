@@ -30,7 +30,7 @@
     n.girth = clamp(+n.girth || 1.2, 0.8, 1.8);
     n.activity = clamp(+n.activity, 0, 1);
     if (!COATS[n.coat]) n.coat = 'ginger';
-    if (!['solid', 'tabby', 'tuxedo', 'calico', 'points', 'locket', 'tabbywhite', 'pastel'].includes(n.pattern)) n.pattern = 'solid';
+    if (!BUILTIN_PATTERNS.includes(n.pattern) && !Object.hasOwn(SPECS, n.pattern) && !/^cat:[A-Za-z0-9_-]{1,24}$/.test(n.pattern)) n.pattern = 'solid';
     const sizeChanged = n.size !== settings.size;
     Object.assign(settings, n);
     if (sizeChanged && running) scan();
@@ -46,18 +46,59 @@
   };
   // Calico is a white cat with orange and black patches, so it brings its own base coat.
   const CALICO = { coat: '#f6f3ee', shade: '#d8d3ca', stripe: '#d8d3ca', eye: '#c7962b', closed: '#8c867c' };
-  // Patterns based on real cats also bring their own colors, so the coat picker doesn't apply to them.
-  const OWN_COAT = {
-    calico: CALICO,
-    // Boba: black with a white locket on the chest, a white chin, and yellow-green eyes.
-    locket: { coat: '#27272c', shade: '#1b1b1f', stripe: '#1b1b1f', eye: '#c5c45a', closed: '#8a8b95' },
+  const OWN_COAT = { calico: CALICO };
+  const BUILTIN_PATTERNS = ['solid', 'tabby', 'tuxedo', 'calico', 'points'];
+
+  // ---------- cats described as data ----------
+  // A cat spec is plain data: { v: 1, n: name, c: [coat, shade, stripe, eye, closed eye], m: markings }.
+  // Each marking is [kind, ...numbers, color?], with colors as 6-digit hex without '#'.
+  // Boba, Moe and Linda are built this way; custom cats arrive as signed codes (see popup.js).
+  const SPECS = {
+    // Boba: black with a white locket, a white chin, white toes, and yellow-green eyes.
+    locket: { v: 1, n: 'Boba', c: ['27272c', '1b1b1f', '1b1b1f', 'c5c45a', '8a8b95'],
+      m: [['chest', 0.08, 0.12, 0.5], ['throat', 0.065, 0.075], ['chin', 0.03], ['spot', 2, -0.95, 0, 0.04, 0.025], ['socks', 1.6, 1.6]] },
     // Moe: brown mackerel tabby with a white bib, muzzle and socks, and green eyes.
-    tabbywhite: { coat: '#88735c', shade: '#665443', stripe: '#30261c', eye: '#a4b06a', closed: '#3d3226' },
+    tabbywhite: { v: 1, n: 'Moe', c: ['88735c', '665443', '30261c', 'a4b06a', '3d3226'],
+      m: [['tabby'], ['chest', 0.1, 0.14, 0.45], ['throat', 0.07, 0.06], ['muzzle', 0.065, 0.05, 0.11], ['blaze'], ['socks', 1.35, 1.35]] },
     // Linda: pale apricot and white with a few smoky patches and faint tail rings.
-    pastel: { coat: '#e8bb8c', shade: '#c79a6d', stripe: '#d29a68', eye: '#c7962b', closed: '#8c7660' },
+    pastel: { v: 1, n: 'Linda', c: ['e8bb8c', 'c79a6d', 'd29a68', 'c7962b', '8c7660'],
+      m: [['belly', 0.85], ['chest', 0.11, 0.15, 0.3], ['throat', 0.09, 0.07], ['muzzle', 0.1, 0.065, 0.08],
+        ['spot', 2, 0.85, 0.02, 0.07, 0.04, '5d5856'], ['spot', 1, 0.9, -0.04, 0.04, 0.03, '5d5856'], ['face', 0.01, -0.07, 0.04, 0.03, '5d5856'],
+        ['rings', 4, 0.026], ['socks', 0.25, 0.8]] },
   };
-  const COAT = () => OWN_COAT[settings.pattern] || COATS[settings.coat] || COATS.ginger;
-  const MUTED = '#8b8f99', HEART = '#e0567a', BIB = '#f7f5f0', CALICO_ORANGE = '#e08a3e', CALICO_DARK = '#2c2c31', SMOKE = '#5d5856';
+  // How many numbers each marking needs (the rest have defaults).
+  const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2 };
+  const HEX = /^[0-9a-f]{6}$/i;
+  // Specs come from storage, so check everything and drop anything that doesn't fit.
+  function cleanSpec(x) {
+    if (!x || typeof x !== 'object' || x.v !== 1 || !Array.isArray(x.c) || x.c.length !== 5 || !x.c.every(c => typeof c === 'string' && HEX.test(c))) return null;
+    if (!Array.isArray(x.m) || x.m.length > 60) return null;
+    const m = [];
+    for (const k of x.m) {
+      if (!Array.isArray(k) || typeof k[0] !== 'string' || !Object.hasOwn(MARKS, k[0])) continue;
+      const a = k.slice(1).filter(v => typeof v === 'number' && Number.isFinite(v)).map(v => clamp(v, -5, 5));
+      const last = k[k.length - 1];
+      if (a.length < MARKS[k[0]]) continue;
+      m.push({ kind: k[0], a, col: typeof last === 'string' && HEX.test(last) ? '#' + last.toLowerCase() : null });
+    }
+    const [coat, shade, stripe, eye, closed] = x.c.map(c => '#' + c.toLowerCase());
+    return { name: String(x.n || 'My cat').slice(0, 24), pal: { coat, shade, stripe, eye, closed }, m };
+  }
+  const BUILT = Object.fromEntries(Object.entries(SPECS).map(([k, v]) => [k, cleanSpec(v)]));
+  let customCats = [];
+  function setCats(list) {
+    customCats = (Array.isArray(list) ? list : [])
+      .map(c => c && typeof c.id === 'string' ? { id: c.id, spec: cleanSpec(c.spec) } : null)
+      .filter(c => c && c.spec);
+  }
+  function specFor() {
+    const p = settings.pattern;
+    if (Object.hasOwn(BUILT, p)) return BUILT[p];
+    if (p.startsWith('cat:')) { const c = customCats.find(c => c.id === p.slice(4)); return c ? c.spec : null; }
+    return null;
+  }
+  const COAT = () => { const sp = specFor(); return sp ? sp.pal : OWN_COAT[settings.pattern] || COATS[settings.coat] || COATS.ginger; };
+  const MUTED = '#8b8f99', HEART = '#e0567a', BIB = '#f7f5f0', CALICO_ORANGE = '#e08a3e', CALICO_DARK = '#2c2c31';
   function darken(hex, k) {
     const n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g2 = (n >> 8) & 255, b = n & 255;
     const f = v => Math.round(v * k).toString(16).padStart(2, '0');
@@ -1285,39 +1326,38 @@
   function pointColor(pal) { return darken(pal.coat, settings.coat === 'cream' || settings.coat === 'white' ? 0.42 : 0.55); }
   // Leg markings are drawn right after their own leg and sized to it, so they ride along with
   // the leg and never spill onto the body or the leg in front.
+  const farOf = col => col === BIB ? '#dcd7cd' : darken(col, 0.85);
+  const alongPt = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
+  // Color a leg from t down to the toes: t runs 0 at the knee, 1 at the ankle, 2 at the toes.
+  function legFrom(Lg, t0, col) {
+    const w = legWidths(Lg);
+    if (t0 < 1) drawPath([alongPt(Lg.K, Lg.D, t0), Lg.D, Lg.P], [lerp(w[1], w[2], t0), w[2], w[3]], col);
+    else drawPath([alongPt(Lg.D, Lg.P, t0 - 1), Lg.P], [lerp(w[2], w[3], t0 - 1), w[3]], col);
+    drawPaw(Lg, col);
+  }
+  function tabbyLeg(Lg, far, col) {
+    const s = S(), w = legWidths(Lg);
+    const dx = Lg.D.x - Lg.K.x, dy = Lg.D.y - Lg.K.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+    g.strokeStyle = far ? darken(col, 0.85) : col; g.lineCap = 'butt'; g.lineWidth = 0.026 * s;
+    for (const u of [0.3, 0.65]) {
+      const p = alongPt(Lg.K, Lg.D, u), half = lerp(w[1], w[2], u) * 0.5;
+      g.beginPath(); g.moveTo(p.x + nx * half, p.y + ny * half); g.lineTo(p.x - nx * half, p.y - ny * half); g.stroke();
+    }
+  }
   function legPattern(Lg, pal, far) {
-    const pat = settings.pattern;
-    if (pat === 'solid' || pat === 'calico') return;
-    const s = S(), w = legWidths(Lg), along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
-    const white = far ? '#dcd7cd' : BIB;
+    const pat = settings.pattern, sp = specFor();
+    if (!sp && (pat === 'solid' || pat === 'calico' || !BUILTIN_PATTERNS.includes(pat))) return;
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    if (pat === 'locket') {
-      // Boba's white toes: just the paw, with a little white peeking above it.
-      drawPath([along(Lg.D, Lg.P, 0.6), Lg.P], [lerp(w[2], w[3], 0.6), w[3]], white);
-      drawPaw(Lg, white);
-    } else if (pat === 'pastel') {
-      // White socks: up past the wrist on the front legs, just the feet behind.
-      const u = Lg.front ? 0.25 : 0.8;
-      drawPath([along(Lg.K, Lg.D, u), Lg.D, Lg.P], [lerp(w[1], w[2], u), w[2], w[3]], white);
-      drawPaw(Lg, white);
-    } else if (pat === 'tabby' || pat === 'tabbywhite') {
-      const dx = Lg.D.x - Lg.K.x, dy = Lg.D.y - Lg.K.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
-      g.strokeStyle = far ? darken(pal.stripe, 0.85) : pal.stripe; g.lineCap = 'butt'; g.lineWidth = 0.026 * s;
-      for (const u of [0.3, 0.65]) {
-        const p = along(Lg.K, Lg.D, u), half = lerp(w[1], w[2], u) * 0.5;
-        g.beginPath(); g.moveTo(p.x + nx * half, p.y + ny * half); g.lineTo(p.x - nx * half, p.y - ny * half); g.stroke();
+    if (sp) {
+      for (const { kind, a, col } of sp.m) {
+        if (kind === 'tabby') tabbyLeg(Lg, far, col || pal.stripe);
+        else if (kind === 'socks') { const c = col || BIB; legFrom(Lg, clamp(Lg.front ? a[0] : a[1], 0, 2), far ? farOf(c) : c); }
+        else if (kind === 'points') { const c = col || pointColor(pal); legFrom(Lg, 0.3, far ? farOf(c) : c); }
       }
-      if (pat === 'tabbywhite') {
-        drawPath([along(Lg.D, Lg.P, 0.35), Lg.P], [lerp(w[2], w[3], 0.35), w[3]], white);
-        drawPaw(Lg, white);
-      }
-    } else {
-      const col = pat === 'tuxedo' ? (far ? '#dcd7cd' : BIB) : (far ? darken(pointColor(pal), 0.85) : pointColor(pal));
-      const start = along(Lg.K, Lg.D, pat === 'tuxedo' ? 0.55 : 0.3);
-      drawPath([start, Lg.D, Lg.P], [lerp(w[1], w[2], pat === 'tuxedo' ? 0.55 : 0.3), w[2], w[3]], col);
-      drawPaw(Lg, col);
-    }
+    } else if (pat === 'tabby') tabbyLeg(Lg, far, pal.stripe);
+    else if (pat === 'tuxedo') legFrom(Lg, 0.55, far ? '#dcd7cd' : BIB);
+    else { const c = pointColor(pal); legFrom(Lg, 0.3, far ? darken(c, 0.85) : c); }
     g.restore();
   }
   function earPts(r, near) {
@@ -1351,74 +1391,81 @@
   }
 
   // Coat patterns are painted with 'source-atop', so they only ever land on the cat itself.
+  function tabbyBody(r, col) {
+    const s = r.s;
+    for (let i = 0; i < 5; i++) {
+      const F = spineFrame(r, i), p = F.p, k = i === 4 ? 0.6 : 1;
+      const a = { x: p.x + F.n.x * r.up[i] * 1.3, y: p.y + F.n.y * r.up[i] * 1.3 };
+      const b = { x: p.x - F.n.x * r.dn[i] * 0.2 * k, y: p.y - F.n.y * r.dn[i] * 0.2 * k };
+      strokeLine({ x: a.x - F.t.x * 0.02 * s, y: a.y - F.t.y * 0.02 * s }, b, 0.045 * s, col);
+    }
+    tailRings(3, 0.03 * s, col);
+    // forehead "M"
+    strokeLine(headPt(r, -0.02, -0.12), headPt(r, 0.03, -0.06), 0.022 * s, col);
+    strokeLine(headPt(r, 0.04, -0.13), headPt(r, 0.06, -0.07), 0.022 * s, col);
+  }
+  function strokeLine(a, b, w, col) { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); }
+  function tailRings(from, w, col) {
+    const s = S();
+    for (let i = Math.max(1, Math.round(from)); i < TAIL_N; i += 2) {
+      const p = tail[i], q = tail[i - 1], tx = p.x - q.x, ty = p.y - q.y, l = Math.hypot(tx, ty) || 1;
+      const nx = -ty / l, ny = tx / l;
+      strokeLine({ x: p.x + nx * 0.07 * s, y: p.y + ny * 0.07 * s }, { x: p.x - nx * 0.07 * s, y: p.y - ny * 0.07 * s }, w, col);
+    }
+  }
+  function pointsBody(r, col) {
+    const s = r.s, af = Math.abs(r.fa), m = headPt(r, 0.09, 0.02);
+    drawEll(m.x, m.y, 0.1 * s * (0.6 + 0.4 * af), 0.09 * s, r.head.rot, col);
+    drawPoly(earPts(r, false), col); drawPoly(earPts(r, true), col);
+    drawPath(tail.slice(3), tail.slice(3).map(() => 0.1 * s), col);
+  }
+  // Paint a cat spec's markings, in order, onto the cat.
+  function drawSpec(r, pal, sp) {
+    const s = r.s, af = Math.abs(r.fa), ang = F => Math.atan2(F.t.y, F.t.x);
+    for (const { kind, a, col } of sp.m) {
+      const c = col || BIB;
+      if (kind === 'tabby') tabbyBody(r, col || pal.stripe);
+      else if (kind === 'rings') tailRings(a[0] ?? 4, (a[1] ?? 0.026) * s, col || pal.stripe);
+      else if (kind === 'chest') {
+        const F = spineFrame(r, 4), d = a[2] ?? 0.45;
+        drawEll(F.p.x - F.n.x * r.dn[4] * d + F.t.x * 0.07 * s, F.p.y - F.n.y * r.dn[4] * d + F.t.y * 0.07 * s, a[0] * s, a[1] * s, ang(F), c);
+      } else if (kind === 'throat') {
+        const x = lerp(r.chest.x, r.head.x, 0.55) + r.fa * 0.04 * s, y = lerp(r.chest.y, r.head.y, 0.55) + 0.05 * s;
+        drawEll(x, y, a[0] * s, a[1] * s, 0, c);
+      } else if (kind === 'muzzle') {
+        const m = headPt(r, a[2] ?? 0.1, 0.052);
+        drawEll(m.x, m.y, a[0] * s * (0.6 + 0.4 * af), a[1] * s, r.head.rot, c);
+      } else if (kind === 'chin') {
+        const p = headPt(r, 0.12, 0.075);
+        drawEll(p.x, p.y, a[0] * s, a[0] * 0.73 * s, r.head.rot, c);
+      } else if (kind === 'blaze') strokeLine(headPt(r, 0.115, 0.02), headPt(r, 0.1, -0.04), (a[0] ?? 0.022) * s, c);
+      else if (kind === 'belly') {
+        const d = a[0] ?? 0.85;
+        for (let i = 1; i < 5; i++) {
+          const F = spineFrame(r, i);
+          drawEll(F.p.x - F.n.x * r.dn[i] * d, F.p.y - F.n.y * r.dn[i] * d, 0.13 * s, 0.065 * s + r.dn[i] * 0.25, ang(F), c);
+        }
+      } else if (kind === 'spot') {
+        // a spot on the body: [spine point 0 (hips) to 4 (shoulders), height (+ up the back, - down the belly), shift along, rx, ry]
+        const i = clamp(Math.round(a[0]), 0, 4), F = spineFrame(r, i), off = a[1] * (a[1] >= 0 ? r.up[i] : r.dn[i]);
+        drawEll(F.p.x + F.n.x * off + F.t.x * a[2] * s, F.p.y + F.n.y * off + F.t.y * a[2] * s, a[3] * s, a[4] * s, ang(F), col || pal.stripe);
+      } else if (kind === 'face') {
+        const p = headPt(r, a[0], a[1]);
+        drawEll(p.x, p.y, a[2] * s, a[3] * s, r.head.rot, col || pal.stripe);
+      } else if (kind === 'ears') { drawPoly(earPts(r, false), col || pal.stripe); drawPoly(earPts(r, true), col || pal.stripe); }
+      else if (kind === 'tail') { const k = clamp(Math.round(a[0]), 0, TAIL_N - 1); drawPath(tail.slice(k), tail.slice(k).map(() => 0.1 * s), col || pal.stripe); }
+      else if (kind === 'points') pointsBody(r, col || pointColor(pal));
+    }
+  }
   function drawPattern(r, pal) {
-    const pat = settings.pattern;
-    if (pat === 'solid') return;
-    const s = r.s, L = r.legs, af = Math.abs(r.fa);
+    const pat = settings.pattern, sp = specFor();
+    if (sp) { g.save(); g.globalCompositeOperation = 'source-atop'; drawSpec(r, pal, sp); g.restore(); return; }
+    if (pat === 'solid' || !BUILTIN_PATTERNS.includes(pat)) return;
+    const s = r.s, af = Math.abs(r.fa);
     g.save();
     g.globalCompositeOperation = 'source-atop';
-    const line = (a, b, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); };
-    const along = (A, B, u) => ({ x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u) });
-    if (pat === 'tabby' || pat === 'tabbywhite') {
-      const col = pal.stripe;
-      for (let i = 0; i < 5; i++) {
-        const F = spineFrame(r, i), p = F.p, k = i === 4 ? 0.6 : 1;
-        const a = { x: p.x + F.n.x * r.up[i] * 1.3, y: p.y + F.n.y * r.up[i] * 1.3 };
-        const b = { x: p.x - F.n.x * r.dn[i] * 0.2 * k, y: p.y - F.n.y * r.dn[i] * 0.2 * k };
-        line({ x: a.x - F.t.x * 0.02 * s, y: a.y - F.t.y * 0.02 * s }, b, 0.045 * s, col);
-      }
-      for (let i = 3; i < TAIL_N; i += 2) {
-        const p = tail[i], q = tail[i - 1], tx = p.x - q.x, ty = p.y - q.y, l = Math.hypot(tx, ty) || 1;
-        const nx = -ty / l, ny = tx / l;
-        line({ x: p.x + nx * 0.07 * s, y: p.y + ny * 0.07 * s }, { x: p.x - nx * 0.07 * s, y: p.y - ny * 0.07 * s }, 0.03 * s, col);
-      }
-      // forehead "M"
-      line(headPt(r, -0.02, -0.12), headPt(r, 0.03, -0.06), 0.022 * s, col);
-      line(headPt(r, 0.04, -0.13), headPt(r, 0.06, -0.07), 0.022 * s, col);
-      if (pat === 'tabbywhite') {
-        // white bib running up the throat, and a white muzzle with a thin blaze up the nose
-        const F4 = spineFrame(r, 4), ang = Math.atan2(F4.t.y, F4.t.x);
-        drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.45 + F4.t.x * 0.07 * s, F4.p.y - F4.n.y * r.dn[4] * 0.45 + F4.t.y * 0.07 * s, 0.1 * s, 0.14 * s, ang, BIB);
-        const th = { x: lerp(r.chest.x, r.head.x, 0.55), y: lerp(r.chest.y, r.head.y, 0.55) + 0.05 * s };
-        drawEll(th.x + r.fa * 0.04 * s, th.y, 0.07 * s, 0.06 * s, 0, BIB);
-        const m = headPt(r, 0.11, 0.055);
-        drawEll(m.x, m.y, 0.065 * s * (0.6 + 0.4 * af), 0.05 * s, r.head.rot, BIB);
-        line(headPt(r, 0.115, 0.02), headPt(r, 0.1, -0.04), 0.022 * s, BIB);
-      }
-    } else if (pat === 'locket') {
-      // White locket on the chest that narrows up to the throat, a small chin spot, and a fleck on the belly.
-      const F4 = spineFrame(r, 4), F2 = spineFrame(r, 2), ang = Math.atan2(F4.t.y, F4.t.x);
-      drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.5 + F4.t.x * 0.07 * s, F4.p.y - F4.n.y * r.dn[4] * 0.5 + F4.t.y * 0.07 * s, 0.08 * s, 0.12 * s, ang, BIB);
-      const th = { x: lerp(r.chest.x, r.head.x, 0.5), y: lerp(r.chest.y, r.head.y, 0.5) + 0.06 * s };
-      drawEll(th.x + r.fa * 0.05 * s, th.y + 0.02 * s, 0.065 * s, 0.075 * s, 0, BIB);
-      const c = headPt(r, 0.12, 0.075);
-      drawEll(c.x, c.y, 0.03 * s, 0.022 * s, r.head.rot, BIB);
-      drawEll(F2.p.x - F2.n.x * r.dn[2] * 0.95, F2.p.y - F2.n.y * r.dn[2] * 0.95, 0.04 * s, 0.025 * s, Math.atan2(F2.t.y, F2.t.x), BIB);
-    } else if (pat === 'pastel') {
-      // White underside, chest and lower face; a few smoky patches on the back and by one eye; faint tail rings.
-      for (let i = 1; i < 5; i++) {
-        const F = spineFrame(r, i);
-        drawEll(F.p.x - F.n.x * r.dn[i] * 0.85, F.p.y - F.n.y * r.dn[i] * 0.85, 0.13 * s, 0.065 * s + r.dn[i] * 0.25, Math.atan2(F.t.y, F.t.x), BIB);
-      }
-      const F4 = spineFrame(r, 4);
-      drawEll(F4.p.x - F4.n.x * r.dn[4] * 0.3 + F4.t.x * 0.08 * s, F4.p.y - F4.n.y * r.dn[4] * 0.3 + F4.t.y * 0.08 * s, 0.11 * s, 0.15 * s, Math.atan2(F4.t.y, F4.t.x), BIB);
-      const th = { x: lerp(r.chest.x, r.head.x, 0.55), y: lerp(r.chest.y, r.head.y, 0.55) + 0.04 * s };
-      drawEll(th.x + r.fa * 0.03 * s, th.y, 0.09 * s, 0.07 * s, 0, BIB);
-      const m = headPt(r, 0.08, 0.05);
-      drawEll(m.x, m.y, 0.1 * s * (0.6 + 0.4 * af), 0.065 * s, r.head.rot, BIB);
-      const patch = (i, v, du, rx, ry) => {
-        const F = spineFrame(r, i);
-        drawEll(F.p.x + F.n.x * v * s + F.t.x * du * s, F.p.y + F.n.y * v * s + F.t.y * du * s, rx * s, ry * s, Math.atan2(F.t.y, F.t.x), SMOKE);
-      };
-      patch(2, 0.1, 0.02, 0.07, 0.04);
-      patch(1, 0.11, -0.04, 0.04, 0.03);
-      const e = headPt(r, 0.01, -0.07);
-      drawEll(e.x, e.y, 0.04 * s, 0.03 * s, r.head.rot, SMOKE);
-      for (let i = 4; i < TAIL_N; i += 2) {
-        const p = tail[i], q = tail[i - 1], tx = p.x - q.x, ty = p.y - q.y, l = Math.hypot(tx, ty) || 1;
-        const nx = -ty / l, ny = tx / l;
-        line({ x: p.x + nx * 0.07 * s, y: p.y + ny * 0.07 * s }, { x: p.x - nx * 0.07 * s, y: p.y - ny * 0.07 * s }, 0.026 * s, pal.stripe);
-      }
+    if (pat === 'tabby') {
+      tabbyBody(r, pal.stripe);
     } else if (pat === 'tuxedo') {
       const F3 = spineFrame(r, 3), F4 = spineFrame(r, 4);
       // bib on the chest and a white belly
@@ -1442,11 +1489,7 @@
       drawPath(tail.slice(4), tail.slice(4).map(() => 0.09 * s), CALICO_ORANGE);
       drawPath(tail.slice(7), tail.slice(7).map(() => 0.09 * s), CALICO_DARK);
     } else if (pat === 'points') {
-      const pt = pointColor(pal);
-      const m = headPt(r, 0.09, 0.02);
-      drawEll(m.x, m.y, 0.1 * s * (0.6 + 0.4 * af), 0.09 * s, r.head.rot, pt);
-      drawPoly(earPts(r, false), pt); drawPoly(earPts(r, true), pt);
-      drawPath(tail.slice(3), tail.slice(3).map(() => 0.1 * s), pt);
+      pointsBody(r, pointColor(pal));
     }
     g.restore();
   }
@@ -1890,7 +1933,8 @@
       else if (msg.type === 'pagecat:hide') hide();
       reply({ visible: running, mood: settings.moodCycle ? mood.name : null });
     });
-    chrome.storage.sync.get(['pagecat'], res => {
+    chrome.storage.sync.get(['pagecat', 'pagecatCats'], res => {
+      setCats(res.pagecatCats);
       applySettings(res.pagecat);
       // Ask the background whether the cat is on this tab (it follows you between tabs).
       if (!window.__pageCatManual) {
@@ -1905,6 +1949,7 @@
     });
     chrome.storage.onChanged.addListener((ch, area) => {
       if (area !== 'sync') return;
+      if (ch.pagecatCats) setCats(ch.pagecatCats.newValue);
       if (ch.pagecat) applySettings(ch.pagecat.newValue);
       if (ch.pagecatBlocked && (ch.pagecatBlocked.newValue || []).includes(location.hostname) && running) hide();
     });
@@ -1912,7 +1957,7 @@
     // Loaded outside the extension (the local test page): run with defaults and expose a few hooks.
     show();
     window.__pageCat = {
-      settings, applySettings, cat, canvas, layer, tail, feet, mood, show, hide, scan, goGrab, setState, zoomStep, goScratch,
+      settings, applySettings, setCats, cat, canvas, layer, tail, feet, mood, show, hide, scan, goGrab, setState, zoomStep, goScratch,
       get prey() { return prey; }, get items() { return items; }, get plats() { return plats; }, get hideCands() { return hideCands; },
       step(dt) { T += dt; update(dt); },
       placeOn(el, frac, state, t) {

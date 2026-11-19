@@ -62,6 +62,8 @@
     const opts = { moodCycle: false };
     for (const k of ['size', 'girth', 'activity']) if (q.has(k)) opts[k] = +q.get(k);
     for (const k of ['coat', 'pattern']) if (q.has(k)) opts[k] = q.get(k);
+    // ?spec=<cat spec JSON> previews a custom cat before it is signed into a code.
+    if (q.has('spec')) { d.setCats([{ id: 'preview', spec: JSON.parse(q.get('spec')) }]); opts.pattern = 'cat:preview'; }
     d.applySettings({ ...d.settings, ...opts });
     const step = sec => { for (let i = 0; i < sec * 60; i++) d.step(1 / 60); };
     const firstP = document.querySelector('main > p');

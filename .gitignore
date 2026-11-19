@@ -4,3 +4,5 @@ page-cat/dist/
 page-cat/store/codex/run.log
 __pycache__/
 .claude/
+# customer cat specs and codes (private)
+page-cat/orders/

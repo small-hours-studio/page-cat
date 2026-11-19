@@ -40,6 +40,15 @@
       <div class="chips" id="patterns" role="radiogroup" aria-label="Coat pattern"></div>
       <p class="note" id="calicoNote" hidden>Calico cats are white with orange and black patches, so the coat color doesn't apply.</p>
     </div>
+    <div class="field col">
+      <span class="lbl">Your cats</span>
+      <ul class="mycats" id="myCats" aria-label="Your cats"></ul>
+      <form class="addcat" id="addCat">
+        <input id="catCode" type="text" placeholder="Paste a cat code" spellcheck="false" autocomplete="off" aria-label="Cat code">
+        <button class="chip" type="submit">Import</button>
+      </form>
+      <p class="note" id="catMsg" role="status" hidden></p>
+    </div>
   </section>
 
   <section>
