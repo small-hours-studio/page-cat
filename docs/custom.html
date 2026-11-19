@@ -6,6 +6,7 @@
 <title>Custom cats · Page Cat</title>
 <meta name="description" content="Send a photo of your cat and get a Page Cat that looks like them.">
 <link rel="icon" href="icon.png">
+<script src="config.js"></script>
 <style>
   :root {
     --bg: #fbf6ee; --fg: #2a221c; --muted: #76685c; --card: #fffdf9; --line: #ecdfcd;
@@ -70,9 +71,9 @@
 
   <h2>How it works</h2>
   <ol class="steps">
-    <li>Order on Ko-fi. Send a photo of your cat from the side and tell me their name.</li>
-    <li>I make your cat and send you a code.</li>
-    <li>In the Page Cat menu, paste the code under <i>Your cats</i> and click Import.</li>
+    <li>Order here. Add photos of your cat's left side, right side and face, and tell us their name.</li>
+    <li>We make your cat, usually within an hour, and show it to you walking around the page.</li>
+    <li>Ask for up to 2 changes. When it's right, approve it and get your code. Paste it in the Page Cat menu under <i>Your cats</i>.</li>
   </ol>
 
   <h2>Prices</h2>
@@ -94,8 +95,8 @@
   <details><summary>Do I need anything besides Page Cat?</summary><p>No. The code goes straight into the extension.</p></details>
   <details><summary>Will my cat show up on my other computers?</summary><p>Yes, if Chrome sync is on.</p></details>
   <details><summary>Can I rename my cat or change its size?</summary><p>Yes, from the Page Cat menu.</p></details>
-  <details><summary>What if it doesn't look right?</summary><p>Tell me what to change. If I can't get it right, I'll refund you.</p></details>
-  <details><summary>What happens to my photos?</summary><p>I delete them after I send your code.</p></details>
+  <details><summary>What if it doesn't look right?</summary><p>You see your cat before you get the code, and you can ask for up to 2 changes. If it's still not right, email us and we'll refund you.</p></details>
+  <details><summary>What happens to my photos?</summary><p>They're used only to make your cat and are deleted once you approve it.</p></details>
   <details><summary>Can I share my code?</summary><p>Yes. Anyone with the code can add your cat.</p></details>
 
   <div class="cta"><a class="order" id="order2" href="#" aria-disabled="true">Orders open soon</a></div>
@@ -103,11 +104,10 @@
   <footer><a href="./">Page Cat</a> · <a href="privacy.html">Privacy policy</a> · Small Hours Studio</footer>
 </main>
 <script>
-  // The Ko-fi page that takes orders. Leave empty until it's ready; the buttons stay greyed out.
-  const KOFI = '';
-  if (KOFI) for (const id of ['order', 'order2']) {
+  // config.js says whether orders are open; until then the buttons stay greyed out.
+  if (window.ORDERS_OPEN) for (const id of ['order', 'order2']) {
     const a = document.getElementById(id);
-    a.href = KOFI; a.textContent = 'Order on Ko-fi'; a.removeAttribute('aria-disabled');
+    a.href = 'order.html'; a.textContent = 'Order your cat'; a.removeAttribute('aria-disabled');
   }
 </script>
 </body>

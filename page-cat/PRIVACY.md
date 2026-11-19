@@ -23,7 +23,7 @@ To decide where the cat can walk, Page Cat reads the size and position of elemen
 
 ## Custom cat orders
 
-If you order a custom cat, you send your cat's photos and name through the order page on Ko-fi, outside the extension. They are used only to make your cat and are deleted once you have your cat code. Ko-fi and the payment provider handle the payment under their own privacy policies; the developer doesn't see your card details. The cat code holds only the cat's name, colors and markings.
+If you order a custom cat on our order page, you upload photos of your cat, its name, and your email address. The photos are kept by our order service (hosted on Cloudflare) and sent to Anthropic's Claude AI, which makes your cat's design; Anthropic doesn't use them to train its models. The photos are deleted once you approve your cat, or within a few days if you don't finish paying. Your email address is used only for your receipt and your cat's code. Payment is handled by Stripe; we never see your card details. The cat code holds only the cat's name, colors and markings.
 
 ## Contact
 

@@ -6,3 +6,10 @@ __pycache__/
 .claude/
 # customer cat specs and codes (private)
 page-cat/orders/
+
+# order service local secrets and state
+order-service/.dev.vars
+order-service/.wrangler/
+order-service/node_modules/
+order-service/test/*.txt
+order-service/.wrangler-dev.log

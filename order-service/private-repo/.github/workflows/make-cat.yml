@@ -1,0 +1,35 @@
+# Goes in the PRIVATE repo small-hours-studio/page-cat-orders (customer photos and names must never
+# appear in a public repo's logs). The order service starts it once per cat.
+name: make-cat
+run-name: make cat ${{ inputs.cat }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      order: { description: Order id, required: true }
+      cat: { description: Cat index, required: true }
+
+permissions:
+  contents: read
+
+jobs:
+  make:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: small-hours-studio/page-cat
+          path: page-cat
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install anthropic==2.11.0 pillow==12.3.0
+      - name: Make the cat
+        env:
+          ORDER: ${{ inputs.order }}
+          CAT: ${{ inputs.cat }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          JOB_SECRET: ${{ secrets.JOB_SECRET }}
+          WORKER_URL: ${{ vars.WORKER_URL }}
+        run: python page-cat/page-cat/tools/catmaker/run_job.py "$ORDER" "$CAT"

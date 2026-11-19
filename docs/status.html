@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Your order · Page Cat</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="site.css">
+<script src="config.js"></script>
+<style>
+  .cat h3 { margin: 0 0 4px; font-size: 20px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .stage { position: relative; height: 190px; border-radius: 10px; background: var(--stage); margin: 12px 0 4px; }
+  .stage .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: #e2d3bd; border-radius: 0 0 10px 10px; }
+  .photos-in { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="custom.html"><img src="icon.png" alt="">Page Cat</a>
+  <h1>Your order</h1>
+  <p class="lede" id="lede">Loading…</p>
+  <p class="small" id="keep" hidden>Keep this page's link: it's how you get back to your order. We also email it to you.</p>
+  <div id="cats"></div>
+  <footer><a href="custom.html">Custom cats</a> · <a href="privacy.html">Privacy policy</a> · Small Hours Studio</footer>
+</main>
+<script src="js/cat.js"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  // ?api= is for local testing only, so a crafted link can't send orders anywhere else
+  const testApi = q.get('api') || '';
+  const API = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(testApi) ? testApi : window.ORDER_API;
+  const ORDER = q.get('order'), KEY = q.get('key');
+  const $ = id => document.getElementById(id);
+  let showing = -1, timer = 0, last = '';
+
+  // The cat that walks around this page is the real Page Cat, drawn with the customer's design.
+  function showCat(i, spec) {
+    const d = window.__pageCat;
+    if (!d || !spec) return;
+    d.setCats([{ id: 'c' + i, spec }]);
+    d.applySettings({ ...d.settings, size: 80, activity: 0.5, moodCycle: false, pattern: 'cat:c' + i });
+    showing = i;
+    placeOnStage();
+  }
+  // Put the cat on its card's stage (a light floor, so dark cats show up); from there it wanders.
+  function placeOnStage() {
+    const d = window.__pageCat, floor = document.querySelector(`[data-stage="${showing}"] .floor`);
+    if (d && floor) d.placeOn(floor, 0.5, 'idle', 2);
+  }
+
+  async function call(path, body) {
+    const res = await fetch(API + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: KEY, ...body }) } : {});
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+    return data;
+  }
+
+  async function load() {
+    clearTimeout(timer);
+    let o;
+    try { o = await call(`/api/orders/${ORDER}?key=${encodeURIComponent(KEY || '')}`); }
+    catch (e) { $('lede').textContent = e.message; return; }
+    const sig = JSON.stringify(o);
+    if (sig !== last) { last = sig; render(o); }
+    const busy = o.status === 'unpaid' || o.cats.some(c => c.status === 'making' || c.status === 'unpaid');
+    if (busy) timer = setTimeout(load, o.status === 'unpaid' ? 3000 : 8000);
+  }
+
+  function render(o) {
+    $('keep').hidden = false;
+    $('lede').textContent = o.status === 'unpaid' ? 'Waiting for your payment to come through…'
+      : o.cats.every(c => c.status === 'approved') ? 'All done. Enjoy your cat' + (o.cats.length > 1 ? 's' : '') + '!'
+      : 'Thanks! Here is how your order is going.';
+    const box = $('cats');
+    box.replaceChildren();
+    let firstReady = -1;
+    o.cats.forEach((c, i) => {
+      const el = document.createElement('section');
+      el.className = 'card cat';
+      const h = document.createElement('h3'); h.textContent = c.name; el.append(h);
+      const p = document.createElement('p'); p.style.margin = '0'; el.append(p);
+      if (c.status === 'unpaid' || c.status === 'making') {
+        p.innerHTML = '<span class="spinner"></span>';
+        p.append(c.status === 'unpaid' ? 'Waiting for payment.' : `Making ${c.name}. This usually takes a few minutes; you can close this page and come back.`);
+      } else if (c.status === 'ready' || c.status === 'approved') {
+        if (firstReady < 0) firstReady = i;
+        p.textContent = c.status === 'ready'
+          ? `Here's ${c.name}, walking around this page. Watch both sides as they turn. If anything's off, tell us what to change.`
+          : `${c.name} is ready. Here's the code:`;
+        const stage = document.createElement('div'); stage.className = 'stage'; stage.dataset.stage = i;
+        stage.innerHTML = '<div class="floor"></div>'; el.append(stage);
+        const actions = document.createElement('div'); actions.className = 'actions';
+        const show = document.createElement('button'); show.className = 'btn quiet'; show.type = 'button';
+        show.textContent = showing === i ? `Showing ${c.name}` : `Show ${c.name}`;
+        show.onclick = () => { showCat(i, c.spec); render(o); };
+        actions.append(show);
+        if (c.status === 'ready') {
+          const ok = document.createElement('button'); ok.className = 'btn'; ok.type = 'button'; ok.textContent = `That's ${c.name}! Get the code`;
+          ok.onclick = async () => { ok.disabled = true; try { await call(`/api/orders/${ORDER}/approve`, { cat: i }); await load(); } catch (e) { alertIn(el, e.message); ok.disabled = false; } };
+          actions.append(ok);
+          if (c.revisionsLeft > 0) {
+            const ch = document.createElement('button'); ch.className = 'btn quiet'; ch.type = 'button';
+            ch.textContent = `Something's off (${c.revisionsLeft} change${c.revisionsLeft > 1 ? 's' : ''} left)`;
+            ch.onclick = () => changeForm(el, c, i);
+            actions.append(ch);
+          }
+        } else {
+          const code = document.createElement('p'); code.className = 'code'; code.textContent = c.code; el.insertBefore(code, stage);
+          const copy = document.createElement('button'); copy.className = 'btn'; copy.type = 'button'; copy.textContent = 'Copy code';
+          copy.onclick = async () => { await navigator.clipboard.writeText(c.code); copy.textContent = 'Copied'; };
+          actions.prepend(copy);
+          const how = document.createElement('p'); how.className = 'small';
+          how.textContent = 'To add your cat: click the Page Cat button in your Chrome toolbar, paste the code under "Your cats", and click Import.';
+          el.append(how);
+        }
+        el.append(actions);
+      } else if (c.status === 'needs_photos') {
+        p.textContent = c.message || `We couldn't make out ${c.name}'s coat. Please add clearer photos.`;
+        photoForm(el, i);
+      } else {
+        p.textContent = c.message || 'Something went wrong. We have been told and will email you.';
+      }
+      box.append(el);
+    });
+    if (showing < 0 && firstReady >= 0) { showCat(firstReady, o.cats[firstReady].spec); render(o); }
+    else if (showing >= 0) placeOnStage();
+  }
+
+  function alertIn(el, msg) { let a = el.querySelector('.err'); if (!a) { a = document.createElement('p'); a.className = 'err'; a.setAttribute('role', 'alert'); el.append(a); } a.textContent = msg; }
+
+  function changeForm(el, c, i) {
+    if (el.querySelector('textarea')) return;
+    const lab = document.createElement('label'); lab.className = 'field'; lab.textContent = 'What should change?';
+    const ta = document.createElement('textarea'); ta.maxLength = 600; ta.placeholder = 'e.g. Her left ear is black, and her back paws are white up to the ankle.';
+    lab.htmlFor = ta.id = 'note' + i;
+    const send = document.createElement('button'); send.className = 'btn'; send.type = 'button'; send.textContent = 'Send';
+    send.onclick = async () => { send.disabled = true; try { await call(`/api/orders/${ORDER}/revise`, { cat: i, note: ta.value }); await load(); } catch (e) { alertIn(el, e.message); send.disabled = false; } };
+    el.append(lab, ta, send);
+    ta.focus();
+  }
+
+  function photoForm(el, i) {
+    const wrap = document.createElement('div'); wrap.className = 'photos-in';
+    const inputs = {};
+    for (const [label, text] of [['left', 'Left side'], ['right', 'Right side'], ['face', 'Face']]) {
+      const l = document.createElement('label'); l.className = 'small'; l.textContent = text + ' ';
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inputs[label] = inp;
+      l.append(inp); wrap.append(l);
+    }
+    const send = document.createElement('button'); send.className = 'btn'; send.type = 'button'; send.textContent = 'Send photos';
+    send.onclick = async () => {
+      const fd = new FormData(); fd.append('key', KEY); fd.append('cat', i);
+      let n = 0;
+      for (const [label, inp] of Object.entries(inputs)) if (inp.files[0]) { fd.append('photo_' + label, inp.files[0]); n++; }
+      if (!n) return alertIn(el, 'Add at least one photo.');
+      send.disabled = true;
+      const res = await fetch(`${API}/api/orders/${ORDER}/photos`, { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alertIn(el, data.error || 'Upload failed.'); send.disabled = false; return; }
+      load();
+    };
+    el.append(wrap, send);
+  }
+
+  if (!ORDER || !KEY) $('lede').textContent = 'This link is missing its order details. Use the link from your email.';
+  else load();
+</script>
+</body>
+</html>

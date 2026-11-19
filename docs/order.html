@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order a custom cat · Page Cat</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="site.css">
+<script src="config.js"></script>
+<style>
+  .photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 6px; }
+  .slot { position: relative; aspect-ratio: 1; border: 2px dashed var(--line); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: var(--muted); cursor: pointer; overflow: hidden; background: var(--bg); }
+  .slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .slot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .slot .x { position: absolute; top: 4px; right: 4px; z-index: 2; background: rgba(0,0,0,.6); color: #fff; border: 0; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; display: none; }
+  .slot.has .x { display: block; }
+  .slot b { color: var(--fg); }
+  @media (max-width: 480px) { .photos { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="custom.html"><img src="icon.png" alt="">Page Cat</a>
+  <h1>Order a custom cat</h1>
+  <p class="lede">Add a few photos of your cat. You'll see your cat before you get the code, and you can ask for 2 changes.</p>
+  <p class="err" id="cancelled" hidden>Payment was cancelled. Your photos weren't kept; add them again to order.</p>
+
+  <form id="form" novalidate>
+    <h2>How many cats?</h2>
+    <div class="chips" role="radiogroup" aria-label="How many cats" id="count">
+      <div class="chip" role="radio" tabindex="0" data-n="1" aria-checked="true"><b>$3</b><span>1 cat</span></div>
+      <div class="chip" role="radio" tabindex="-1" data-n="2" aria-checked="false"><b>$4</b><span>2 cats</span></div>
+      <div class="chip" role="radio" tabindex="-1" data-n="3" aria-checked="false"><b>$5</b><span>3 cats</span></div>
+    </div>
+
+    <div id="cats"></div>
+
+    <h2>Your email</h2>
+    <input type="email" id="email" autocomplete="email" placeholder="you@example.com" required>
+    <p class="small">For your receipt and your cat's code. Nothing else.</p>
+
+    <p class="err" id="error" role="alert" hidden></p>
+    <button class="btn" type="submit" id="pay">Continue to payment · $3</button>
+    <p class="small">Payment is handled by Stripe. Most cats are ready within an hour.</p>
+  </form>
+
+  <footer><a href="custom.html">Custom cats</a> · <a href="privacy.html">Privacy policy</a> · Small Hours Studio</footer>
+</main>
+
+<template id="catTpl">
+  <div class="card">
+    <label class="field">Cat <span class="num"></span>'s name</label>
+    <input type="text" class="name" maxlength="24" placeholder="Mittens">
+    <label class="field">Photos</label>
+    <p class="small" style="margin:0">A clear photo of each side and one of the face works best. At least one is needed.</p>
+    <div class="photos">
+      <label class="slot" data-label="left"><b>Left side</b>head pointing right<input type="file" accept="image/*"><button type="button" class="x" aria-label="Remove photo">×</button></label>
+      <label class="slot" data-label="right"><b>Right side</b>head pointing left<input type="file" accept="image/*"><button type="button" class="x" aria-label="Remove photo">×</button></label>
+      <label class="slot" data-label="face"><b>Face</b>looking at you<input type="file" accept="image/*"><button type="button" class="x" aria-label="Remove photo">×</button></label>
+    </div>
+  </div>
+</template>
+
+<script>
+  // The order service. ?api=http://localhost:8787 points the page at a local copy for testing.
+  // ?api= is for local testing only, so a crafted link can't send orders anywhere else
+  const testApi = new URLSearchParams(location.search).get('api') || '';
+  const API = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(testApi) ? testApi : window.ORDER_API;
+  const PRICES = ['$3', '$4', '$5'];
+  const $ = id => document.getElementById(id);
+  let count = 1;
+  const photos = []; // photos[cat][label] = Blob
+
+  if (new URLSearchParams(location.search).has('cancelled')) $('cancelled').hidden = false;
+
+  function renderCats() {
+    const box = $('cats');
+    while (box.children.length > count) box.lastElementChild.remove();
+    while (box.children.length < count) {
+      const i = box.children.length, el = $('catTpl').content.firstElementChild.cloneNode(true);
+      el.querySelector('.num').textContent = i + 1;
+      photos[i] = photos[i] || {};
+      for (const slot of el.querySelectorAll('.slot')) {
+        const label = slot.dataset.label, input = slot.querySelector('input');
+        input.addEventListener('change', async () => {
+          const f = input.files[0];
+          if (!f) return;
+          photos[i][label] = await shrink(f);
+          let img = slot.querySelector('img');
+          if (!img) { img = document.createElement('img'); img.alt = ''; slot.prepend(img); }
+          img.src = URL.createObjectURL(photos[i][label]);
+          slot.classList.add('has');
+        });
+        slot.querySelector('.x').addEventListener('click', e => {
+          e.preventDefault();
+          delete photos[i][label]; input.value = '';
+          const img = slot.querySelector('img'); if (img) img.remove();
+          slot.classList.remove('has');
+        });
+      }
+      box.append(el);
+    }
+    $('pay').textContent = `Continue to payment · ${PRICES[count - 1]}`;
+  }
+
+  // Phone photos are large; send a 1600px JPEG instead (plenty for the cat maker, quick to upload).
+  async function shrink(file) {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+    if (!bmp) return file;
+    const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    return await new Promise(res => c.toBlob(res, 'image/jpeg', 0.88));
+  }
+
+  for (const chip of $('count').children) {
+    const pick = () => {
+      count = +chip.dataset.n;
+      for (const c of $('count').children) { c.setAttribute('aria-checked', String(c === chip)); c.tabIndex = c === chip ? 0 : -1; }
+      renderCats();
+    };
+    chip.addEventListener('click', pick);
+    chip.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick(); } });
+  }
+  renderCats();
+
+  $('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const err = msg => { $('error').textContent = msg; $('error').hidden = !msg; };
+    err('');
+    const names = [...document.querySelectorAll('#cats .name')].map(x => x.value.trim());
+    for (let i = 0; i < count; i++) {
+      if (!names[i]) return err(`Please give cat ${i + 1} a name.`);
+      if (!Object.keys(photos[i] || {}).length) return err(`Please add at least one photo of ${names[i]}.`);
+    }
+    const email = $('email').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err('Please enter a valid email address.');
+    const fd = new FormData();
+    fd.append('email', email);
+    fd.append('cats', JSON.stringify(names.slice(0, count).map(name => ({ name }))));
+    for (let i = 0; i < count; i++) for (const [label, blob] of Object.entries(photos[i])) fd.append(`cat${i}_${label}`, blob, `${label}.jpg`);
+    $('pay').disabled = true; $('pay').textContent = 'Uploading photos…';
+    try {
+      const res = await fetch(API + '/api/orders', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
+      location.href = data.url;
+    } catch (ex) {
+      err(ex.message.includes('fetch') ? 'Could not reach the order service. Check your connection and try again.' : ex.message);
+      $('pay').disabled = false; renderCats();
+    }
+  });
+</script>
+</body>
+</html>

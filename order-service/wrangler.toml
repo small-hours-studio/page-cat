@@ -1,0 +1,23 @@
+name = "page-cat-orders"
+main = "src/index.js"
+compatibility_date = "2026-10-15"
+
+[vars]
+SITE_URL = "https://small-hours-studio.github.io/page-cat"
+ALLOWED_ORIGINS = "https://small-hours-studio.github.io"
+PRICES = "300,400,500"            # cents for 1, 2, 3 cats
+GITHUB_REPO = "small-hours-studio/page-cat-orders"
+STRIPE_TAX = "0"                  # "1" turns on Stripe Tax at checkout
+# EMAIL_FROM = "Small Hours Studio <cats@your-domain>"   # needs a domain verified with Resend
+# OWNER_EMAIL = "your-alias@example.com"                # where failed jobs are reported
+
+# Secrets (set with `npx wrangler secret put NAME`, never in this file):
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GITHUB_TOKEN, JOB_SECRET, CAT_SIGNING_KEY, RESEND_API_KEY (optional)
+
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "REPLACE_WITH_KV_ID"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "page-cat-photos"

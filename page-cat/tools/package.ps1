@@ -17,6 +17,9 @@ Copy-Item (Join-Path $root 'content\cat.js') (Join-Path $stage 'content')
 New-Item -ItemType Directory -Force (Join-Path $stage 'icons') | Out-Null
 foreach ($px in 16, 32, 48, 128) { Copy-Item (Join-Path $root "icons\icon$px.png") (Join-Path $stage 'icons') }
 
+# The order site's status page shows customers their cat with the same engine.
+Copy-Item (Join-Path $root 'content\cat.js') (Join-Path (Split-Path -Parent $root) 'docs\js\cat.js')
+
 $zip = Join-Path $dist "page-cat-$version.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip
