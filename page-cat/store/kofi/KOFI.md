@@ -43,7 +43,7 @@ Slots cap how many open orders you can have; raise them once you know how long o
 >
 > I only use your photos to make your cat and delete them once you have your code.
 >
-> You need the free Page Cat extension for Chrome: https://tsassypants.github.io/page-cat/
+> You need the free Page Cat extension for Chrome: https://small-hours-studio.github.io/page-cat/
 
 If Ko-fi lets buyers attach files to a commission request, ask for the photos there. If it doesn't, add: "Reply to your order confirmation with the photos."
 
