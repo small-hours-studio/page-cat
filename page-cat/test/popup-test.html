@@ -24,7 +24,15 @@
   const html = await (await fetch('../popup.html')).text();
   const body = new DOMParser().parseFromString(html, 'text/html').body;
   body.querySelectorAll('script').forEach(s => s.remove());
+  body.querySelectorAll('img[src^="icons/"]').forEach(i => i.setAttribute('src', '../' + i.getAttribute('src')));
   document.body.prepend(...body.childNodes);
+  // ?demo shows the menu with three imported cats, for store screenshots.
+  if (new URLSearchParams(location.search).has('demo')) {
+    const cats = [];
+    for (const n of ['boba', 'moe', 'linda']) cats.push({ id: n, name: n[0].toUpperCase() + n.slice(1), spec: await (await fetch('../orders/' + n + '.json')).json(), size: 40, girth: 1.2 });
+    store.pagecatCats = cats;
+    store.pagecat = { size: 40, girth: 1.2, activity: 0.7, coat: 'ginger', pattern: 'cat:moe', moodCycle: true, pagePlay: true, cursorPlay: true, follow: true };
+  }
   await import('../popup.js');
   const q = new URLSearchParams(location.search), code = q.get('code');
   if (code) {

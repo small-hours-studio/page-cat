@@ -11,7 +11,7 @@ Open <https://chrome.google.com/webstore/devconsole> in Chrome. Files are relati
 - **Category:** Fun (under Lifestyle). If it isn't offered, use Entertainment.
 - **Language:** English.
 - **Store icon:** `store/icon-store-128.png`
-- **Screenshots** (drag in this order): `store/screenshots/1-perch.png`, `2-play.png`, `3-nap.png`, `4-settings.png`
+- **Screenshots** (drag in this order): `store/screenshots/1-perch.png`, `2-play.png`, `3-held.png`, `4-nap.png`, `5-menu.png` (rebuild with `python tools/make_screenshots.py`, dev server running)
 - **Small promo tile:** `store/promo-small.png`
 - **Marquee promo tile:** `store/marquee.png`
 - **Homepage URL:** `https://small-hours-studio.github.io/page-cat/`

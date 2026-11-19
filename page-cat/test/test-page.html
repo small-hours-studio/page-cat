@@ -65,6 +65,7 @@
     // ?spec=<cat spec JSON> previews a custom cat before it is signed into a code.
     if (q.has('spec')) { d.setCats([{ id: 'preview', spec: JSON.parse(q.get('spec')) }]); opts.pattern = 'cat:preview'; }
     d.applySettings({ ...d.settings, ...opts });
+    if (q.has('scroll')) { window.scrollTo(0, +q.get('scroll')); d.scan(); }
     const step = sec => { for (let i = 0; i < sec * 60; i++) d.step(1 / 60); };
     const firstP = document.querySelector('main > p');
     if (scene === 'perch') { d.placeOn(document.querySelector('h1'), 0.62, 'sit'); d.cat.f = d.cat.fa = -1; step(2.5); }
@@ -146,8 +147,15 @@
         if (time >= 1.6 && d.cat.state === 'held') d.release();          // let go
         d.step(dt); time += dt;
       }
+      // ?hand draws a grabbing hand where the cat is held (screenshots can't capture the cursor).
+      if (q.has('hand') && d.cat.held) {
+        const h = document.createElement('div');
+        h.textContent = '✊';
+        h.style.cssText = `position:fixed;z-index:2147483647;font-size:${+q.get('size') * 0.5}px;line-height:1;left:${d.cat.held.x - d.cat.fa * 0.1 * +q.get('size')}px;top:${d.cat.held.y}px;transform:translate(-50%,-12%)`;
+        document.documentElement.appendChild(h);
+      }
     }
-    if (scene === 'nap') { d.placeOn(document.querySelector('.card'), 0.7, 'sleep'); step(4); }
+    if (scene === 'nap') { d.placeOn(document.querySelector(q.get('where') || '.card'), +(q.get('at') || 0.7), 'sleep'); step(4); }
     if (scene === 'play') {
       d.placeOn(firstP, 0.15, 'idle', 0.05);
       d.cat.preyCool = 0;
