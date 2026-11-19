@@ -58,6 +58,7 @@ The signing key is `~/.pagecat/signing-key.pem`. **Back it up somewhere safe.** 
 | Marking | Numbers |
 | --- | --- |
 | `tabby` | none: stripes on body, legs and tail, forehead "M" |
+| `mottle` | amount 0-1 (0.5), blotch size (0.035), seed, where (15 = body 1 + head 2 + tail 4 + legs 8), body from (0 hips), body to (4 shoulders), lowest (-1 belly), highest (1.2 back): many small blotches of one color, for tortoiseshell, calico and torbie coats; layer several, each limited to where that color sits on the real cat |
 | `rings` | first tail segment (4), width (0.026): tail rings only |
 | `chest` | width, height, depth into the chest (0.45) |
 | `throat` | width, height |

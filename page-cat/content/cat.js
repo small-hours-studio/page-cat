@@ -54,19 +54,45 @@
   // Each marking is [kind, ...numbers, color?], with colors as 6-digit hex without '#'.
   // Custom cats arrive as signed codes (see popup.js and tools/catcode.mjs).
   // How many numbers each marking needs (the rest have defaults).
-  const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2 };
+  const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2, mottle: 0 };
   const HEX = /^[0-9a-f]{6}$/i;
+  // Mottling (tortoiseshell, torbie, speckled or spotted coats): lots of small blotches, scattered once
+  // from a seed and pinned to the body, head, tail and legs so they move with the cat.
+  // ["mottle", amount 0-1 (0.5), blotch size (0.035), seed (1), where (15 = body 1 + head 2 + tail 4 + legs 8),
+  //   body from (0 hips), body to (4 shoulders), lowest (-1 belly), highest (1.2 back), color]
+  // The last four keep the body blotches to one area, so layers can follow where each color sits on the real cat.
+  function mottlePoints(a) {
+    const amount = clamp(a[0] ?? 0.5, 0, 1), size = clamp(a[1] ?? 0.035, 0.01, 0.12), where = Math.round(a[3] ?? 15);
+    let seed = (Math.round((a[2] ?? 1) * 1000) >>> 0) || 1;
+    const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+    const blot = () => ({ r: size * (0.55 + rnd() * 0.9), rot: rnd() * Math.PI, asp: 0.55 + rnd() * 0.45 });
+    const out = { body: [], neck: [], head: [], tail: [], legs: [[], [], [], []] };
+    const i0 = clamp(a[4] ?? 0, 0, 4), i1 = clamp(a[5] ?? 4, i0, 4), v0 = clamp(a[6] ?? -1, -1.2, 1.4), v1 = clamp(a[7] ?? 1.2, v0, 1.4);
+    // fewer blotches in a smaller area, so density stays the same
+    const share = ((i1 - i0) / 4) * ((v1 - v0) / 2.2);
+    if (where & 1) for (let k = Math.round(170 * amount * share); k-- > 0;) out.body.push({ i: i0 + rnd() * (i1 - i0), v: v0 + rnd() * (v1 - v0), ...blot() });
+    if (where & 1) for (let k = Math.round(30 * amount); k-- > 0;) out.neck.push({ u: rnd(), side: rnd() * 2 - 1, ...blot() });
+    if (where & 2) for (let k = Math.round(60 * amount); k-- > 0;) out.head.push({ u: -0.16 + rnd() * 0.34, v: -0.17 + rnd() * 0.29, ...blot() });
+    if (where & 4) for (let k = Math.round(26 * amount); k-- > 0;) out.tail.push({ i: 1 + rnd() * (TAIL_N - 1.01), side: rnd() * 2 - 1, ...blot() });
+    if (where & 8) for (const leg of out.legs) for (let k = Math.round(30 * amount); k-- > 0;) leg.push({ t: -1 + rnd() * 3, side: rnd() * 2 - 1, ...blot() });
+    return out;
+  }
   // Specs come from storage, so check everything and drop anything that doesn't fit.
   function cleanSpec(x) {
+    // accept 3-digit colors (fa0) by expanding them, so a short color can't break a whole coat
+    const fix = c => typeof c === 'string' && /^[0-9a-f]{3}$/i.test(c) ? c.replace(/./g, d => d + d) : c;
+    if (x && Array.isArray(x.c)) x = { ...x, c: x.c.map(fix), m: Array.isArray(x.m) ? x.m.map(k => Array.isArray(k) ? k.map(fix) : k) : x.m };
     if (!x || typeof x !== 'object' || x.v !== 1 || !Array.isArray(x.c) || x.c.length !== 5 || !x.c.every(c => typeof c === 'string' && HEX.test(c))) return null;
     if (!Array.isArray(x.m) || x.m.length > 60) return null;
     const m = [];
     for (const k of x.m) {
       if (!Array.isArray(k) || typeof k[0] !== 'string' || !Object.hasOwn(MARKS, k[0])) continue;
-      const a = k.slice(1).filter(v => typeof v === 'number' && Number.isFinite(v)).map(v => clamp(v, -5, 5));
+      const a = k.slice(1).filter(v => typeof v === 'number' && Number.isFinite(v)).map(v => clamp(v, -99, 99));
       const last = k[k.length - 1];
       if (a.length < MARKS[k[0]]) continue;
-      m.push({ kind: k[0], a, col: typeof last === 'string' && HEX.test(last) ? '#' + last.toLowerCase() : null });
+      const mk = { kind: k[0], a, col: typeof last === 'string' && HEX.test(last) ? '#' + last.toLowerCase() : null };
+      if (mk.kind === 'mottle') mk.pts = mottlePoints(a);
+      m.push(mk);
     }
     const [coat, shade, stripe, eye, closed] = x.c.map(c => '#' + c.toLowerCase());
     return { name: String(x.n || 'My cat').slice(0, 24), pal: { coat, shade, stripe, eye, closed }, m };
@@ -1329,14 +1355,47 @@
       g.beginPath(); g.moveTo(p.x + nx * half, p.y + ny * half); g.lineTo(p.x - nx * half, p.y - ny * half); g.stroke();
     }
   }
+  function mottleLeg(Lg, far, col, pts) {
+    const s = S(), w = legWidths(Lg), list = pts.legs[(Lg.front ? 0 : 2) + (far ? 1 : 0)];
+    const c = far ? farOf(col) : col;
+    for (const q of list) {
+      const seg = q.t < 0 ? 0 : q.t < 1 ? 1 : 2, u = q.t - seg + 1;
+      const A = [Lg.A, Lg.K, Lg.D][seg], B = [Lg.K, Lg.D, Lg.P][seg], half = lerp(w[seg], w[seg + 1], u) * 0.5;
+      const dx = B.x - A.x, dy = B.y - A.y, l = Math.hypot(dx, dy) || 1;
+      const x = lerp(A.x, B.x, u) - dy / l * half * q.side, y = lerp(A.y, B.y, u) + dx / l * half * q.side;
+      drawEll(x, y, q.r * s * 0.8, q.r * s * 0.8 * q.asp, Math.atan2(dy, dx) + q.rot, c);
+    }
+  }
+  function mottleBody(r, col, pts) {
+    const s = r.s;
+    for (const q of pts.body) {
+      const i0 = Math.min(3, Math.floor(q.i)), f = q.i - i0, A = spineFrame(r, i0), B = spineFrame(r, i0 + 1);
+      const px = lerp(A.p.x, B.p.x, f), py = lerp(A.p.y, B.p.y, f), nx = lerp(A.n.x, B.n.x, f), ny = lerp(A.n.y, B.n.y, f);
+      const off = q.v * (q.v >= 0 ? lerp(r.up[i0], r.up[i0 + 1], f) : lerp(r.dn[i0], r.dn[i0 + 1], f));
+      drawEll(px + nx * off, py + ny * off, q.r * s, q.r * s * q.asp, Math.atan2(lerp(A.t.y, B.t.y, f), lerp(A.t.x, B.t.x, f)) + q.rot, col);
+    }
+    const gn = 1 + (settings.girth - 1) * 1.3;
+    for (const q of pts.neck) {
+      const ax = r.chest.x, ay = r.chest.y - 0.02 * s, bx = lerp(r.chest.x, r.head.x, 0.6), by = lerp(r.chest.y, r.head.y, 0.6);
+      const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1, half = lerp(0.2, 0.17, q.u) * s * gn * 0.5;
+      drawEll(lerp(ax, bx, q.u) - dy / l * half * q.side, lerp(ay, by, q.u) + dx / l * half * q.side, q.r * s, q.r * s * q.asp, Math.atan2(dy, dx) + q.rot, col);
+    }
+    for (const q of pts.head) { const p = headPt(r, q.u, q.v); drawEll(p.x, p.y, q.r * s * 0.8, q.r * s * 0.8 * q.asp, r.head.rot + q.rot, col); }
+    for (const q of pts.tail) {
+      const k = Math.floor(q.i), f = q.i - k, a = tail[k], b = tail[Math.min(TAIL_N - 1, k + 1)], z = tail[k - 1];
+      const tx = b.x - z.x, ty = b.y - z.y, l = Math.hypot(tx, ty) || 1, half = lerp(0.08, 0.048, q.i / (TAIL_N - 1)) * s * 0.5;
+      drawEll(lerp(a.x, b.x, f) - ty / l * half * q.side, lerp(a.y, b.y, f) + tx / l * half * q.side, q.r * s * 0.7, q.r * s * 0.7 * q.asp, Math.atan2(ty, tx) + q.rot, col);
+    }
+  }
   function legPattern(Lg, pal, far) {
     const pat = settings.pattern, sp = specFor();
     if (!sp && (pat === 'solid' || pat === 'calico' || !BUILTIN_PATTERNS.includes(pat))) return;
     g.save();
     g.globalCompositeOperation = 'source-atop';
     if (sp) {
-      for (const { kind, a, col } of sp.m) {
+      for (const { kind, a, col, pts } of sp.m) {
         if (kind === 'tabby') tabbyLeg(Lg, far, col || pal.stripe);
+        else if (kind === 'mottle') mottleLeg(Lg, far, col || pal.stripe, pts);
         else if (kind === 'socks') { const c = col || BIB; legFrom(Lg, clamp(Lg.front ? a[0] : a[1], 0, 2), far ? farOf(c) : c); }
         else if (kind === 'points') { const c = col || pointColor(pal); legFrom(Lg, 0.3, far ? farOf(c) : c); }
       }
@@ -1406,7 +1465,7 @@
   // Paint a cat spec's markings, in order, onto the cat.
   function drawSpec(r, pal, sp) {
     const s = r.s, af = Math.abs(r.fa), ang = F => Math.atan2(F.t.y, F.t.x);
-    for (const { kind, a, col } of sp.m) {
+    for (const { kind, a, col, pts } of sp.m) {
       const c = col || BIB;
       if (kind === 'tabby') tabbyBody(r, col || pal.stripe);
       else if (kind === 'rings') tailRings(a[0] ?? 4, (a[1] ?? 0.026) * s, col || pal.stripe);
@@ -1439,6 +1498,7 @@
       } else if (kind === 'ears') { drawPoly(earPts(r, false), col || pal.stripe); drawPoly(earPts(r, true), col || pal.stripe); }
       else if (kind === 'tail') { const k = clamp(Math.round(a[0]), 0, TAIL_N - 1); drawPath(tail.slice(k), tail.slice(k).map(() => 0.1 * s), col || pal.stripe); }
       else if (kind === 'points') pointsBody(r, col || pointColor(pal));
+      else if (kind === 'mottle') mottleBody(r, col || pal.stripe, pts);
     }
   }
   function drawPattern(r, pal) {
