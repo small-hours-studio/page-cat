@@ -105,7 +105,8 @@
       for (const el of document.querySelectorAll('header, main, .help')) el.remove();
       document.documentElement.style.background = document.body.style.background = 'transparent';
       const ground = document.createElement('div');
-      ground.style.cssText = 'position:fixed;left:0;right:0;bottom:0;height:60px';
+      // near the top, like a heading: low in the window the cat looks up and stretches its neck
+      ground.style.cssText = 'position:fixed;left:0;right:0;top:260px;height:60px';
       document.body.appendChild(ground);
       const pose = q.get('pose') || 'sit';
       d.placeOn(ground, pose === 'walk' ? 0.25 : 0.5, pose === 'walk' ? 'idle' : pose, pose === 'walk' ? 0.01 : 99);

@@ -12,7 +12,7 @@ Files are in `store/kofi/`. Text is ready to paste; edit freely.
 
 **About / bio:**
 
-> I make Page Cat, a Chrome extension that puts a little cat on the websites you visit. Send me a photo of your cat and I'll make a Page Cat that looks like them.
+> I make Page Cat, a Chrome extension that puts a small cat on the websites you visit. I also make custom cats that look like yours.
 
 ## 2. Getting paid (keep your name private)
 - Connect **Stripe** and/or **PayPal** under Settings → Payments.
@@ -32,23 +32,18 @@ Slots cap how many open orders you can have; raise them once you know how long o
 
 **Description (same for all three, change the count):**
 
-> A Page Cat that looks like your cat, with their coat, markings and eye color.
+> A Page Cat that looks like your cat.
 >
-> After you order, send me:
-> - A clear photo of each cat from the side
-> - A photo of the face if they have markings there
-> - Each cat's name
+> After you order, send me a photo of each cat from the side and tell me their names. I'll send you a code, usually within 3 days. In the Page Cat menu, paste the code under "Your cats" and click Import.
 >
-> I'll send you a cat code within 3 days. Open Page Cat from your toolbar, paste the code under "Your cats", and press Import. One round of changes is included, and if I can't get it right you get your money back.
+> If it doesn't look right, tell me what to change. If I can't get it right, I'll refund you. I delete your photos after I send your code.
 >
-> I only use your photos to make your cat and delete them once you have your code.
->
-> You need the free Page Cat extension for Chrome: https://small-hours-studio.github.io/page-cat/
+> Get Page Cat for Chrome: https://small-hours-studio.github.io/page-cat/
 
 If Ko-fi lets buyers attach files to a commission request, ask for the photos there. If it doesn't, add: "Reply to your order confirmation with the photos."
 
 ## 4. Hook it up
-Send me your Ko-fi link. I'll put it in `docs/custom.html` (the `KOFI` line near the bottom), which turns the "Orders open soon" buttons into "Order your cat". The button in the extension goes to that page, so the Ko-fi link can change later without an extension update.
+Send me your Ko-fi link. I'll put it in `docs/custom.html` (the `KOFI` line near the bottom), which turns the "Orders open soon" buttons into "Order on Ko-fi". The button in the extension goes to that page, so the Ko-fi link can change later without an extension update.
 
 ## 5. Handling an order
 1. Save the photos somewhere private (not the repo).
