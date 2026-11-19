@@ -18,7 +18,7 @@ It walks along headings and pictures and jumps from one to the next. It naps, gr
 
 Its mood changes over the day. Most of the time it's sleepy or relaxed, and once in a while it gets the zoomies.
 
-You can pick its size, how chunky it is, a coat color, and a pattern: tabby, tuxedo, calico or colorpoint. If you don't want it playing with the page or following your mouse, you can turn those off.
+You can pick its size, how chunky it is, a coat color, and a coat pattern. If you don't want it playing with the page or following your mouse, you can turn those off.
 
 Click the toolbar button to bring the cat to the page you're on, or set it to show up on every site. Alt+Shift+C brings it over or sends it away. Click the cat to pet it.
 

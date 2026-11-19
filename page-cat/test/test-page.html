@@ -67,6 +67,37 @@
     const firstP = document.querySelector('main > p');
     if (scene === 'perch') { d.placeOn(document.querySelector('h1'), 0.62, 'sit'); d.cat.f = d.cat.fa = -1; step(2.5); }
     if (scene === 'walk') { d.placeOn(null, 0.1, 'idle', 0.01); d.cat.f = d.cat.fa = 1; d.cat.tx = innerWidth * 0.9; d.setState('walk'); step(+q.get('t') || 1.2); }
+    if (scene === 'floorstat') {
+      // Five simulated minutes: share of time spent on the window bottom, and number of jumps.
+      let onFloor = 0, jumps = 0, last = '';
+      const total = 60 * 300;
+      for (let i = 0; i < total; i++) {
+        d.step(1 / 60);
+        if (i % 60 === 0) d.scan();
+        if (d.cat.plat && d.cat.plat.floor && d.cat.state !== 'air') onFloor++;
+        if (d.cat.state === 'air' && last !== 'air') jumps++;
+        last = d.cat.state;
+      }
+      const out = document.createElement('pre'); out.id = 'floorstat';
+      out.textContent = `FLOORSTAT floor=${(onFloor / total * 100).toFixed(0)}% jumps=${jumps}`;
+      document.body.appendChild(out);
+    }
+    if (scene === 'scrollstat') {
+      // Scroll down the article and back up over a simulated minute; count hops and where the cat is.
+      let onBox = 0, onFloor = 0, hops = 0, last = '';
+      const total = 60 * 60;
+      for (let i = 0; i < total; i++) {
+        if (i % 20 === 0) { window.scrollBy(0, i < total / 2 ? 24 : -24); window.dispatchEvent(new Event('scroll')); }
+        if (i % 30 === 0) d.scan();
+        d.step(1 / 60);
+        if (d.cat.state !== 'air') { if (d.cat.plat.floor) onFloor++; else onBox++; }
+        if (d.cat.state === 'air' && last !== 'air') hops++;
+        last = d.cat.state;
+      }
+      const out = document.createElement('pre'); out.id = 'scrollstat';
+      out.textContent = `SCROLLSTAT box=${(onBox / total * 100).toFixed(0)}% floor=${(onFloor / total * 100).toFixed(0)}% hops=${hops}`;
+      document.body.appendChild(out);
+    }
     if (scene === 'nap') { d.placeOn(document.querySelector('.card'), 0.7, 'sleep'); step(4); }
     if (scene === 'play') {
       d.placeOn(firstP, 0.15, 'idle', 0.05);

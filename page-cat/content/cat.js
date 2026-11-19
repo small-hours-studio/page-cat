@@ -78,8 +78,9 @@
   let prey = null;      // the item currently being played with
   let uid = 1;
   const mouse = { x: -999, y: -999, active: false, sx: 0, sy: 0, stillSince: performance.now() };
-  const maxUp = () => 3.6 * S() + 40;
-  const maxX = () => 4.5 * S() + 60;
+  // Cats can leap several body lengths; enough to get from the bottom of the window onto the page.
+  const maxUp = () => 5.5 * S() + 60;
+  const maxX = () => 6 * S() + 80;
 
   // ---------- moods ----------
   // Real cats cycle: long sleepy and chill stretches, playful spells, the odd burst of madness.
@@ -164,7 +165,7 @@
     glance: null, glanceT: 1, behindT: 0, blink: 0, blinkT: 2.5, ear: 0, earT: 3, groom: 0, groomIn: -1,
     zT: 0, heartT: 0, rig: null, pitch: 0, airBlend: 0,
     intent: null, nuzzleBlend: 0, interestT: 1, cool: 4, landPounce: false,
-    preyCool: 20, zoomLeft: 0, swatItem: null, swatDone: false, wall: null, gait: 'walk',
+    preyCool: 20, zoomLeft: 0, swatItem: null, swatDone: false, wall: null, gait: 'walk', hopCool: 0,
   };
 
   function poseKey() {
@@ -267,11 +268,12 @@
     for (const o of opts) { r -= o[1]; if (r <= 0) return o[0]; }
     return opts[0][0];
   }
-  function jumpOptions() {
+  function jumpOptions(reach = 1) {
     const s = S(), P = cat.plat, m = 0.4 * s, out = [];
     for (const Q of plats) {
       if (Q === P || Q.gone || Q.x1 - Q.x0 < 2 * m) continue;
-      if (P.y - Q.y > maxUp()) continue;
+      if (P.y - Q.y > maxUp() * reach) continue;
+      if (Q.y < 40 || Q.y > H - 2) continue;
       let lx = rr(Q.x0 + m, Q.x1 - m);
       if (Math.abs(lx - cat.x) > maxX()) lx = clamp(cat.x + Math.sign(lx - cat.x) * rr(1, 3) * s, Q.x0 + m, Q.x1 - m);
       const dir = Math.sign(lx - cat.x) || cat.f;
@@ -281,6 +283,11 @@
       out.push({ to: Q, lx, tx });
     }
     return out;
+  }
+  // Exploring: prefer the boxes it hasn't stood on for the longest time.
+  function pickExplore(jumps) {
+    const sorted = jumps.slice().sort((a, b) => (a.to.visited || 0) - (b.to.visited || 0));
+    return sorted[Math.floor(rand() * Math.min(3, sorted.length))];
   }
   function walkSomewhere() {
     const s = S(), P = cat.plat, m = 0.4 * s;
@@ -301,19 +308,23 @@
     if (cat.zoomLeft > 0) { zoomStep(); return; }
     if (mouseInterest()) return;
     const a = actLevel(), lazy = 1.7 - a, P = cat.plat, s = S();
-    const jumps = jumpOptions(), toys = playCandidates();
+    // The bottom edge of the window is just somewhere to land; the page is where the cat wants to be.
+    let jumps = jumpOptions();
+    if (P.floor && !jumps.length) jumps = jumpOptions(1.8);
+    const toys = playCandidates();
+    const fl = P.floor ? 0.4 : 1;
     const opts = [
-      ['walk', 1.4 * (0.25 + 1.2 * a)], ['sit', 2.4 * (1.3 - a)], ['loaf', 2.5 * (1.3 - a)],
-      ['idle', 1.0 * (1.2 - 0.6 * a)], ['stretch', 0.4],
-      ['scratch', P.floor ? 0.25 : 0.5],
-      ['sleep', (cat.energy < 0.3 ? 4 : 0.35) * (1.8 - 1.5 * a)],
+      ['walk', 1.4 * (0.25 + 1.2 * a) * fl], ['sit', 2.4 * (1.3 - a) * fl], ['loaf', 2.5 * (1.3 - a) * fl],
+      ['idle', 1.0 * (1.2 - 0.6 * a) * fl], ['stretch', 0.4 * fl],
+      ['scratch', P.floor ? 0.2 : 0.5],
+      ['sleep', (cat.energy < 0.3 ? 4 : 0.35) * (1.8 - 1.5 * a) * fl],
     ];
-    if (jumps.length) opts.push(['jump', 1.6 * (0.15 + 1.6 * a)]);
+    if (jumps.length) opts.push(['jump', 2.2 * (0.3 + 1.4 * a) * (P.floor ? 3 : 1)]);
     if (P.x1 - P.x0 > 5 * s) opts.push(['zoom', 1.8 * Math.pow(a, 1.5)]);
     if (toys.length) opts.push(['play', 2.4 * Math.pow(a, 1.5) + 0.1]);
     const st = pick(opts);
     if (st === 'walk') { if (!walkSomewhere()) setState('idle', rr(1, 2)); }
-    else if (st === 'jump') { cat.plan = jumps[Math.floor(rand() * jumps.length)]; goWalk(cat.plan.tx); }
+    else if (st === 'jump') { cat.plan = pickExplore(jumps); goWalk(cat.plan.tx); }
     else if (st === 'sit') { setState('sit', rr(4, 8) * lazy); if (rand() < 0.45) cat.groomIn = rr(0.8, 1.6); }
     else if (st === 'loaf') setState('loaf', rr(8, 16) * lazy);
     else if (st === 'idle') setState('idle', rr(1.2, 2.6) * lazy);
@@ -569,6 +580,23 @@
     cat.f = Math.sign(a.x1 - a.x0) || cat.f;
     setState('air');
   }
+  // The nearest comfortable box (in the middle band of the window) it can leap to from here.
+  function scrollHop() {
+    const s = S(), P = cat.plat, m = 0.35 * s;
+    let best = null, bd = 1e9;
+    for (const Q of plats) {
+      if (Q === P || Q.floor) continue;
+      refreshPlat(Q);
+      if (Q.gone || Q.x1 - Q.x0 < 2 * m || Q.y < H * 0.3 || Q.y > H * 0.82) continue;
+      const up = cat.y - Q.y;
+      if (up > maxUp() * 1.4) continue;
+      const lx = clamp(cat.x, Q.x0 + m, Q.x1 - m), dx = Math.abs(lx - cat.x);
+      if (dx > maxX() * 1.3) continue;
+      const d = dx + Math.abs(up) * 0.5 + Math.abs(Q.y - H * 0.55) * 0.5;
+      if (d < bd) { bd = d; best = { to: Q, lx: clamp(lx + (rand() - 0.5) * s, Q.x0 + m, Q.x1 - m), tx: cat.x }; }
+    }
+    return best;
+  }
   // The surface under the cat scrolled away or vanished: hop down to whatever is below.
   function fallFrom(p) {
     const s = S(), yFrom = clamp(p.y, 30, H - 2);
@@ -607,6 +635,20 @@
       }
     }
     if (cat.state === 'nuzzle' && cat.rig && (!mouse.active || Math.hypot(mouse.x - cat.rig.head.x, mouse.y - cat.rig.head.y) > 0.6 * s)) setState('idle', 0.8);
+
+    // While the page scrolls, hop from box to box to stay in view: when its box is sliding off the
+    // top or bottom of the window (or it's down on the window's bottom edge), leap to a box nearer
+    // the middle of the screen.
+    cat.hopCool = Math.max(0, cat.hopCool - dt);
+    if (performance.now() - lastScrollT < 700 && cat.hopCool <= 0 && !prey && cat.plat
+        && !['air', 'crouch', 'chase', 'swat', 'bat', 'probe', 'pet', 'nuzzle', 'stalk'].includes(cat.state)) {
+      const p = cat.plat;
+      if (p.floor || p.y < H * 0.25 || p.y > H * 0.85) {
+        const j = scrollHop();
+        if (j) { cat.plan = j; cat.zoomLeft = 0; cat.intent = null; cat.f = Math.sign(j.lx - cat.x) || cat.f; setState('crouch', 0.1); cat.hopCool = 0.9; }
+        else cat.hopCool = 0.4;
+      }
+    }
 
     switch (cat.state) {
       case 'walk': case 'stalk': case 'chase': case 'zoom': {
@@ -667,6 +709,7 @@
           refreshPlat(to);
           if (to.gone || to.y > H - 2) to = floor;
           cat.plat = to; cat.x = clamp(a.x1, to.x0 + 0.2 * s, to.x1 - 0.2 * s); cat.y = to.y;
+          to.visited = T;
           cat.vx = 0; cat.vy = 0; cat.plan = null;
           cat.landPounce = a.pounce && !a.prey && !a.zoomy;
           setState('land', a.pounce ? 0.45 : 0.3);
@@ -1567,9 +1610,10 @@
   });
   hit.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
 
-  let scrollTimer = 0;
+  let scrollTimer = 0, lastScrollT = -1e9;
   addEventListener('scroll', () => {
     if (!running) return;
+    lastScrollT = performance.now();
     // Hand anything borrowed straight back; the page is moving.
     if (prey && prey.mode !== 'return') sendHome(true);
     if (cat.state === 'wallscratch' && cat.wall && cat.wall.el) setState('idle', 0.5);
