@@ -15,6 +15,14 @@ You turn photos of a real cat into a cat spec (JSON) for Page Cat, a browser ext
 5. **Stripes:** for tabbies add `["tabby"]` (body, legs, tail stripes and forehead M in the stripe color) or `["rings"]` (tail only). Put stripes after the paint so they show on top, unless only some colored areas are striped; then paint the stripes into the map instead.
 6. **Render and compare.** Render with every photo. Go region by region against your word map: head, neck, back, flanks, belly, chest, rump, each leg, tail; colors, patch positions, sizes, and edges. Fix what's off, render again. Up to 4 rounds. Stop when every region matches.
 
+## Common mistakes (checked for, so avoid them)
+- **Too bright.** Real orange fur is muted (`c98a4e`, `b8763d`), not traffic-cone orange. Tortoiseshell "orange" is often brown-tan (`a0683a`). Compare your swatch against the photo at the same spot.
+- **Blocks instead of fur.** Paint patches with organic, irregular outlines that follow the photo, not rectangles. For fine tortoiseshell brindling (colors mixed in small streaks all over), add `["mottle", amount, size, seed, where, ..., color]` layers after the paint map, with small sizes (0.02-0.03), rather than painting dots by hand.
+- **Face details missed.** Check the blaze down the nose, a split face (different color each side), muzzle, chin, eye rims, and the color of each ear separately. Ears are often a different color from the forehead.
+- **Bib and chest.** A white bib shows on the side view at the neck (`neck` rows 2-3) and the front end of the body (`body` last 3-4 columns, lower rows). Paint all of it.
+- **Eyes must show.** If the head around the eye is dark, choose the real iris color (they are rarely black); never make the eye the same color as the fur around it.
+- **Thighs and shoulders.** The top 3 rows of each leg sit over the lower body. Paint them to continue the body pattern around them.
+
 ## Spec format
 ```json
 {
@@ -39,7 +47,11 @@ You turn photos of a real cat into a cat spec (JSON) for Page Cat, a browser ext
   - `tail` 14 columns x 1 row (or 2 rows: top, underside). Column 0 = base, last = tip.
   - legs `fl` front-left, `fr` front-right, `hl` hind-left, `hr` hind-right: 9 rows x 2 columns. Row 0 = top of the leg (shoulder or hip), rows 7-8 = paw. Column 0 = back edge, column 1 = front edge.
 - `L` is the cat's left side; `R` its right side. Both use the same layout (column 0 of the body is always the rump). On the left side, the near legs are `fl` and `hl`; on the right side, `fr` and `hr`.
-- Markings `m` (optional): `["tabby"]`, `["rings", firstTailSegment, width]`, and the older shape markings if useful. Keep `m` short; the paint map does the work.
+- Markings `m` (optional), drawn after the paint map unless you put `["paint"]` in the list to choose when it's drawn:
+  - `["tabby"]`: stripes on body, legs and tail, and the forehead M, in the stripe color.
+  - `["rings", firstTailSegment, width]`: tail rings only, e.g. `["rings", 4, 0.026]`.
+  - `["mottle", amount, size, seed, where, bodyFrom, bodyTo, lowest, highest, "hex"]`: many small blotches of one color, for fine tortoiseshell brindling and speckling. amount 0-1 (0.3 sparse, 0.9 dense), size 0.02 fine to 0.06 coarse, seed any number (use a different one per layer), where = add 1 body, 2 head, 4 tail, 8 legs (15 all). The last four limit the body area: bodyFrom/bodyTo 0 (rump) to 4 (chest), lowest/highest -1 (belly) to 1.2 (back); defaults 0, 4, -1, 1.2. Example, fine tan brindle all over: `["mottle", 0.6, 0.025, 3, 15, "9a6a3e"]`. Example, orange speckles on the shoulders only: `["mottle", 0.5, 0.025, 7, 1, 2.5, 4, -0.2, 1.2, "c98a4e"]`.
+- The render tool prints `PROBLEM:` lines for anything the extension would ignore (rows of different lengths, unknown letters). Fix every one.
 
 ## Output
 Write the spec to the path you were given, render it, and finish with:

@@ -33,7 +33,7 @@ function checkSpec(s) {
   if (!s || s.v !== 1) throw new Error('spec needs "v": 1');
   if (typeof s.n !== 'string' || !s.n.trim() || s.n.length > 24) throw new Error('spec needs a name "n" (1-24 characters)');
   if (!Array.isArray(s.c) || s.c.length !== 5 || !s.c.every(hex)) throw new Error('"c" must be 5 hex colors: coat, shade, stripe, eye, closed eye');
-  if (!Array.isArray(s.m) || s.m.length > 60) throw new Error('"m" must be a list of markings');
+  if (s.m !== undefined && (!Array.isArray(s.m) || s.m.length > 60)) throw new Error('"m" must be a list of markings');
 }
 
 const [cmd, arg] = process.argv.slice(2);

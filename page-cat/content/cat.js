@@ -118,13 +118,68 @@
       if (gr) legs[n] = gr;
     }
     if (!L && !Object.keys(legs).length) return null;
-    return { L: L || {}, R: R || {}, legs };
+    const runsOf = side => Object.fromEntries(Object.entries(side || {}).map(([k, gr]) => [k, smoothRuns(gr)]));
+    return {
+      L: runsOf(L), R: L === R ? null : runsOf(R),
+      legs: Object.fromEntries(Object.entries(legs).map(([k, gr]) => [k, { runs: smoothRuns(gr), toe: gr[gr.length - 1].find(Boolean) || null }])),
+    };
+  }
+  // Turn a grid of colors into smooth patches: upsample each color's area, blend the edges, add a little
+  // fixed noise so edges wander like real fur, then give every fine pixel to its strongest color. The
+  // result is a list of horizontal runs in 0-1 grid coordinates, drawn later through the body's shape.
+  function smoothRuns(grid) {
+    const R = grid.length, C = grid[0].length, K = 6, H = R * K, W = C * K;
+    const labels = [null, ...new Set(grid.flat().filter(Boolean))];
+    if (labels.length === 1) return [];
+    const hash = (x, y, s) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+    const noise = (x, y, s) => {  // smooth value noise, about one cell per lump
+      const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi, sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+      return lerp(lerp(hash(xi, yi, s), hash(xi + 1, yi, s), sx), lerp(hash(xi, yi + 1, s), hash(xi + 1, yi + 1, s), sx), sy);
+    };
+    // blur each color's area (a gaussian about 0.6 cells wide) so blocks of cells become rounded blobs
+    const sig = 0.6 * K, rad = Math.ceil(sig * 2.5), ker = [];
+    for (let i = -rad; i <= rad; i++) ker.push(Math.exp(-(i * i) / (2 * sig * sig)));
+    const ks = ker.reduce((a, b) => a + b, 0);
+    const fields = labels.map(lab => {
+      const tmp = new Float32Array(W * H), out = new Float32Array(W * H);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = 0;
+        for (let i = -rad; i <= rad; i++) { const xx = clamp(x + i, 0, W - 1); v += ker[i + rad] * (grid[Math.floor(y / K)][Math.floor(xx / K)] === lab ? 1 : 0); }
+        tmp[y * W + x] = v / ks;
+      }
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        let v = 0;
+        for (let i = -rad; i <= rad; i++) v += ker[i + rad] * tmp[clamp(y + i, 0, H - 1) * W + x];
+        out[y * W + x] = v / ks;
+      }
+      return out;
+    });
+    const runs = [];
+    for (let y = 0; y < H; y++) {
+      let cur = null, start = 0;
+      for (let x = 0; x <= W; x++) {
+        let best = cur;
+        if (x < W) {
+          let bv = -1;
+          for (let li = 0; li < labels.length; li++) {
+            const v = fields[li][y * W + x] + (noise(x / K * 1.4, y / K * 1.4, li + 1) - 0.5) * 0.3;
+            if (v > bv) { bv = v; best = labels[li]; }
+          }
+        }
+        if (x === W || best !== cur) {
+          if (cur) runs.push({ col: cur, u0: start / W, u1: x / W, v0: y / H, v1: (y + 1) / H });
+          cur = x < W ? best : null; start = x;
+        }
+      }
+    }
+    return runs;
   }
   // Specs come from storage, so check everything and drop anything that doesn't fit.
   function cleanSpec(x) {
     // accept 3-digit colors (fa0) by expanding them, so a short color can't break a whole coat
     const fix = c => typeof c === 'string' && /^[0-9a-f]{3}$/i.test(c) ? c.replace(/./g, d => d + d) : c;
-    if (x && Array.isArray(x.c)) x = { ...x, c: x.c.map(fix), m: Array.isArray(x.m) ? x.m.map(k => Array.isArray(k) ? k.map(fix) : k) : x.m };
+    // markings are optional: a cat can be all paint map
+    if (x && Array.isArray(x.c)) x = { ...x, c: x.c.map(fix), m: Array.isArray(x.m) ? x.m.map(k => Array.isArray(k) ? k.map(fix) : k) : [] };
     if (!x || typeof x !== 'object' || x.v !== 1 || !Array.isArray(x.c) || x.c.length !== 5 || !x.c.every(c => typeof c === 'string' && HEX.test(c))) return null;
     if (!Array.isArray(x.m) || x.m.length > 60) return null;
     const m = [];
@@ -1433,82 +1488,94 @@
       drawEll(lerp(a.x, b.x, f) - ty / l * half * q.side, lerp(a.y, b.y, f) + tx / l * half * q.side, q.r * s * 0.7, q.r * s * 0.7 * q.asp, Math.atan2(ty, tx) + q.rot, col);
     }
   }
-  // Paint-map cells are drawn as slightly oversized soft ovals, so neighbouring cells merge into patches
-  // with natural, uneven edges.
-  const CELL = 0.68;
-  function paintCell(x, y, du, dv, col) {
-    const a = Math.hypot(du.x, du.y), b = Math.hypot(dv.x, dv.y);
-    if (a < 0.05 || b < 0.05) return;
-    drawEll(x, y, a * CELL, b * CELL, Math.atan2(du.y, du.x), col);
+  // Draw paint runs through a region's shape: pos(u, v) maps 0-1 grid coordinates onto the cat.
+  // Long runs are split so they bend with the body; runs overlap a hair so no seams show.
+  function paintRuns(runs, pos, dark) {
+    // one path per color, so runs of the same color merge without seams
+    const byCol = new Map();
+    for (const rn of runs) { if (!byCol.has(rn.col)) byCol.set(rn.col, []); byCol.get(rn.col).push(rn); }
+    for (const [c, list] of byCol) {
+      g.fillStyle = dark ? farOf(c) : c; g.beginPath();
+      for (const rn of list) {
+        const dv = (rn.v1 - rn.v0) * 0.35, du = 0.004, v0 = rn.v0 - dv, v1 = rn.v1 + dv;
+        const n = Math.max(1, Math.ceil((rn.u1 - rn.u0) * 8)), top = [], bot = [];
+        for (let k = 0; k <= n; k++) { const u = lerp(rn.u0 - du, rn.u1 + du, k / n); top.push(pos(u, v0)); bot.push(pos(u, v1)); }
+        g.moveTo(top[0].x, top[0].y);
+        for (const q of top) g.lineTo(q.x, q.y);
+        for (let k = bot.length - 1; k >= 0; k--) g.lineTo(bot[k].x, bot[k].y);
+        g.closePath();
+      }
+      g.fill('nonzero');
+    }
   }
-  function paintSide() { return cat.fa >= 0 ? 'L' : 'R'; }
+  function paintSide(pm) { return cat.fa >= 0 || !pm.R ? pm.L : pm.R; }
   function paintLeg(Lg, far, pm) {
     // near legs belong to the side we see: facing right shows the left side
-    const side = paintSide(), near = side === 'L' ? 'l' : 'r', farS = side === 'L' ? 'r' : 'l';
-    const grid = pm.legs[(Lg.front ? 'f' : 'h') + (far ? farS : near)];
-    if (!grid) return;
-    const w = legWidths(Lg), rows = grid.length, cols = grid[0].length;
-    const segPt = t => {
-      const seg = t < 0 ? 0 : t < 1 ? 1 : 2, u = clamp(t - seg + 1, 0, 1);
+    const left = cat.fa >= 0, name = (Lg.front ? 'f' : 'h') + ((far ? !left : left) ? 'l' : 'r');
+    const leg = pm.legs[name];
+    if (!leg) return;
+    let w = legWidths(Lg); const fwd = cat.fa >= 0 ? -1 : 1;
+    const pos = (u, v) => {
+      // starts above the hip/shoulder joint so the leg's round top is covered too
+      const t = -1.55 + v * 3.6, seg = t < 0 ? 0 : t < 1 ? 1 : 2, f = clamp(t - seg + 1, -0.6, 1.05);
       const A = [Lg.A, Lg.K, Lg.D][seg], B = [Lg.K, Lg.D, Lg.P][seg];
-      const dx = B.x - A.x, dy = B.y - A.y, l = Math.hypot(dx, dy) || 1;
-      return { x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u), nx: -dy / l, ny: dx / l, half: lerp(w[seg], w[seg + 1], u) * 0.5 };
+      const dx = B.x - A.x, dy = B.y - A.y, l = Math.hypot(dx, dy) || 1, half = lerp(w[seg], w[seg + 1], clamp(f, 0, 1)) * 0.5 * 1.2;
+      const side = (u - 0.5) * 2 * fwd;
+      return { x: lerp(A.x, B.x, f) - dy / l * half * side, y: lerp(A.y, B.y, f) + dx / l * half * side };
     };
-    // which way across the leg is "toward the head" depends on the direction the cat faces
-    const fwd = cat.fa >= 0 ? -1 : 1;
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-      let col = grid[r][c];
-      if (!col) continue;
-      if (far) col = farOf(col);
-      const t = -1 + (r + 0.5) / rows * 3.05, side = cols === 1 ? 0 : (c === 0 ? -0.5 : 0.5) * fwd;
-      const p = segPt(t), p2 = segPt(Math.min(2.05, t + 3.05 / rows));
-      const x = p.x + p.nx * p.half * side, y = p.y + p.ny * p.half * side;
-      // cells span the whole row length and their share of the leg's width, so a painted leg is solid
-      const along = { x: (p2.x - p.x) * 1.15, y: (p2.y - p.y) * 1.15 };
-      const across = { x: p.nx * p.half * 2.3 / cols, y: p.ny * p.half * 2.3 / cols };
-      paintCell(x, y, along, across, col);
+    // keep the paint inside the leg's own outline (round joints plus the segments between them)
+    g.save();
+    g.beginPath();
+    const pts = [Lg.A, Lg.K, Lg.D, Lg.P];
+    w = w.map(x => x * 1.12 + 1);  // a touch wider than the drawn leg, so no coat-colored rim is left
+    for (let i = 0; i < 4; i++) { g.moveTo(pts[i].x + w[i] / 2, pts[i].y); g.arc(pts[i].x, pts[i].y, w[i] / 2, 0, Math.PI * 2); }
+    for (let i = 0; i < 3; i++) {
+      const a = pts[i], b = pts[i + 1], dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+      let q = [
+        { x: a.x + nx * w[i] / 2, y: a.y + ny * w[i] / 2 }, { x: b.x + nx * w[i + 1] / 2, y: b.y + ny * w[i + 1] / 2 },
+        { x: b.x - nx * w[i + 1] / 2, y: b.y - ny * w[i + 1] / 2 }, { x: a.x - nx * w[i] / 2, y: a.y - ny * w[i] / 2 },
+      ];
+      // wind every piece the same way as the circles, so overlaps add up instead of cancelling
+      const area = q.reduce((sum, p, k) => sum + p.x * q[(k + 1) % 4].y - q[(k + 1) % 4].x * p.y, 0);
+      if (area < 0) q = q.reverse();
+      g.moveTo(q[0].x, q[0].y); for (let k = 1; k < 4; k++) g.lineTo(q[k].x, q[k].y); g.closePath();
     }
-    if (grid[rows - 1].some(Boolean)) {
-      const toe = grid[rows - 1].find(Boolean);
-      drawPaw(Lg, far ? farOf(toe) : toe);
-    }
+    g.clip('nonzero');
+    paintRuns(leg.runs, pos, far);
+    g.restore();
+    if (leg.toe) drawPaw(Lg, far ? farOf(leg.toe) : leg.toe);
   }
   function paintBody(r, pm) {
-    const s = r.s, sd = pm[paintSide()];
+    const s = r.s, sd = paintSide(pm);
     const F = [0, 1, 2, 3, 4].map(i => spineFrame(r, i));
-    const bodyPos = (i, v) => {
-      const i0 = Math.min(3, Math.max(0, Math.floor(i))), f = clamp(i - i0, 0, 1), A = F[i0], B = F[i0 + 1];
-      const off = v * (v >= 0 ? lerp(r.up[i0], r.up[i0 + 1], f) : lerp(r.dn[i0], r.dn[i0 + 1], f));
-      return { x: lerp(A.p.x, B.p.x, f) + lerp(A.n.x, B.n.x, f) * off, y: lerp(A.p.y, B.p.y, f) + lerp(A.n.y, B.n.y, f) * off };
+    // body: u from rump to chest, v from back to belly
+    const bodyPos = (u, v) => {
+      const i = -0.85 + u * 5.7, vv = 1.15 - v * 2.3;  // reaches over the rounded rump and chest ends
+      const i0 = clamp(Math.floor(i), 0, 3), f = i - i0, A = F[i0], B = F[i0 + 1];
+      const fc = clamp(f, 0, 1), off = vv * (vv >= 0 ? lerp(r.up[i0], r.up[i0 + 1], fc) : lerp(r.dn[i0], r.dn[i0 + 1], fc));
+      return { x: lerp(A.p.x, B.p.x, f) + lerp(A.n.x, B.n.x, fc) * off, y: lerp(A.p.y, B.p.y, f) + lerp(A.n.y, B.n.y, fc) * off };
     };
-    const grid2 = (grid, pos, du0, dv0) => {
-      const rows = grid.length, cols = grid[0].length;
-      for (let rr = 0; rr < rows; rr++) for (let c = 0; c < cols; c++) {
-        const col = grid[rr][c];
-        if (!col) continue;
-        const u = (c + 0.5) / cols, v = (rr + 0.5) / rows;
-        const p = pos(u, v), pu = pos(u + 0.5 / cols, v), pv = pos(u, v + 0.5 / rows);
-        paintCell(p.x, p.y, { x: (pu.x - p.x) * 2, y: (pu.y - p.y) * 2 }, { x: (pv.x - p.x) * 2, y: (pv.y - p.y) * 2 }, col);
-      }
-    };
-    if (sd.tail) grid2(sd.tail, (u, v) => {
+    const sg = r.fa >= 0 ? 1 : -1;
+    if (sd.tail) paintRuns(sd.tail, (u, v) => {
       const ti = clamp(u * (TAIL_N - 1), 0, TAIL_N - 1.001), k = Math.floor(ti), f = ti - k;
       const a = tail[k], b = tail[Math.min(TAIL_N - 1, k + 1)], z = tail[Math.max(0, k - 1)];
       const tx = b.x - z.x, ty = b.y - z.y, l = Math.hypot(tx, ty) || 1;
-      const half = lerp(0.08, 0.048, ti / (TAIL_N - 1)) * s * 0.5, side = (v - 0.5) * 2 * (r.fa >= 0 ? 1 : -1);
+      const half = lerp(0.08, 0.048, ti / (TAIL_N - 1)) * s * 0.6, side = (v - 0.5) * 2 * sg;
       return { x: lerp(a.x, b.x, f) - ty / l * half * side, y: lerp(a.y, b.y, f) + tx / l * half * side };
     });
-    if (sd.body) grid2(sd.body, (u, v) => bodyPos(u * 4, 1.12 - v * 2.2));
+    if (sd.body) paintRuns(sd.body, bodyPos);
     if (sd.neck) {
       const gn = 1 + (settings.girth - 1) * 1.3;
-      const ax = r.chest.x, ay = r.chest.y - 0.02 * s, bx = lerp(r.chest.x, r.head.x, 0.75), by = lerp(r.chest.y, r.head.y, 0.75);
-      const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1, sg = r.fa >= 0 ? 1 : -1;
-      grid2(sd.neck, (u, v) => {
-        const half = lerp(0.2, 0.17, u) * s * gn * 0.5, side = (v - 0.5) * 2 * sg;
-        return { x: lerp(ax, bx, u) - dy / l * half * side, y: lerp(ay, by, u) + dx / l * half * side };
+      // the neck is drawn as a thick stroke from the chest to 60% of the way to the head, with round ends;
+      // the grid starts behind the chest end and reaches into the head, so the whole stroke is covered
+      const cx = r.chest.x, cy = r.chest.y - 0.02 * s, ex = lerp(r.chest.x, r.head.x, 0.6), ey = lerp(r.chest.y, r.head.y, 0.6);
+      const dx = ex - cx, dy = ey - cy, l = Math.hypot(dx, dy) || 1, back = 0.1 * s * gn / l;
+      paintRuns(sd.neck, (u, v) => {
+        const k = lerp(-back, 1.25, u), half = lerp(0.2, 0.17, clamp(k, 0, 1)) * s * gn * 0.62, side = (v - 0.5) * 2 * sg;
+        return { x: cx + dx * k - dy / l * half * side, y: cy + dy * k + dx / l * half * side };
       });
     }
-    if (sd.head) grid2(sd.head, (u, v) => headPt(r, -0.17 + u * 0.37, -0.23 + v * 0.36));
+    if (sd.head) paintRuns(sd.head, (u, v) => headPt(r, -0.18 + u * 0.39, -0.24 + v * 0.38));
   }
   function legPattern(Lg, pal, far) {
     const pat = settings.pattern, sp = specFor();
