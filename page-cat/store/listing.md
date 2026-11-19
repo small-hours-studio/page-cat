@@ -6,30 +6,23 @@ Paste these into the Developer Dashboard. Edit freely.
 Page Cat
 
 ## Summary (132 characters max)
-A small, hand-animated cat that lives on your web pages. It naps, wanders, scratches, and now and then hunts your cursor.
+A little cat that lives on the websites you visit. It walks around, naps, scratches, and sometimes chases your mouse.
 
 ## Category
 Fun
 
 ## Description
-Page Cat puts a small cat on the pages you visit. It isn't a sticker or a looping GIF: every movement is worked out live, so it walks with a real cat's footfall, trots and gallops when it's in a hurry, leaps between headings and images, and curls up to nap.
+Page Cat adds a little cat to the websites you visit.
 
-What it does
-• Walks along the tops of headings, paragraphs, cards and images, and jumps between them.
-• Naps, loafs, grooms, stretches, and scratches the sides of the window.
-• Its mood drifts over time, like a real cat: long sleepy stretches, playful spells, the odd case of zoomies.
-• Now and then it notices your cursor: it might stalk and pounce on it, or walk over and head-bump it.
-• Sometimes it swats a small icon or word off the page and chases it like a mouse. When play is over, the item goes straight back where it was.
-• Click the cat to pet it.
+It walks along headings and pictures and jumps from one to the next. It naps, grooms, stretches when it wakes up, and scratches the edge of the window. Every so often it stalks your mouse pointer, or knocks a small picture or word off the page and chases it around for a while. Whatever it plays with goes back where it was.
 
-Make it yours
-• Size, girth (from slim to absolute unit), six coat colors and five patterns: solid, tabby, tuxedo, calico and colorpoint.
-• Energy level, and switches for cursor play and page play.
-• Call it to the current tab with one click, or have it on every site. Hide it on sites where you'd rather work in peace.
-• Shortcut: Alt+Shift+C.
+Its mood changes over the day. Most of the time it's sleepy or relaxed, and once in a while it gets the zoomies.
 
-Private by design
-Page Cat collects nothing and makes no network requests. Your settings stay in your browser. It never changes page content; anything it plays with is put back exactly as it was.
+You can pick its size, how chunky it is, a coat color, and a pattern: tabby, tuxedo, calico or colorpoint. If you don't want it playing with the page or following your mouse, you can turn those off.
+
+Click the toolbar button to bring the cat to the page you're on, or set it to show up on every site. Alt+Shift+C brings it over or sends it away. Click the cat to pet it.
+
+Page Cat doesn't collect any data and never connects to the internet. Your settings stay in your browser.
 
 ## Single purpose (Privacy practices tab)
 Displays an animated cat companion on top of web pages the user chooses.
