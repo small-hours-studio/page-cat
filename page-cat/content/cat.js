@@ -54,7 +54,7 @@
   // Each marking is [kind, ...numbers, color?], with colors as 6-digit hex without '#'.
   // Custom cats arrive as signed codes (see popup.js and tools/catcode.mjs).
   // How many numbers each marking needs (the rest have defaults).
-  const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2, mottle: 0 };
+  const MARKS = { tabby: 0, rings: 0, chest: 2, throat: 2, muzzle: 2, chin: 1, blaze: 0, belly: 0, spot: 5, face: 4, ears: 0, tail: 1, points: 0, socks: 2, mottle: 0, paint: 0 };
   const HEX = /^[0-9a-f]{6}$/i;
   // Mottling (tortoiseshell, torbie, speckled or spotted coats): lots of small blotches, scattered once
   // from a seed and pinned to the body, head, tail and legs so they move with the cat.
@@ -77,6 +77,49 @@
     if (where & 8) for (const leg of out.legs) for (let k = Math.round(30 * amount); k-- > 0;) leg.push({ t: -1 + rnd() * 3, side: rnd() * 2 - 1, ...blot() });
     return out;
   }
+  // A paint map colors the cat cell by cell, so any pattern can be drawn exactly where it is on the real cat.
+  // p: { k: { letter: hex }, L: side, R: side (optional; mirrors L when missing), legs: { fl, fr, hl, hr } }
+  // side: { body, neck, head, tail }, each a list of equal-length strings of key letters ('.' = leave the coat).
+  //   body: rows from top of the back down to the belly line; columns from the rump to the chest.
+  //   neck: rows from the back of the neck down to the throat; columns from the shoulders up to the head.
+  //   head: rows from the ear tips down to the chin; columns from the back of the head to the nose.
+  //   tail: one or two rows; columns from the base to the tip.
+  // legs: each a list of rows from the top of the leg (hip or shoulder) down to the toes, 1 or 2 columns
+  //   (2 = back edge, front edge). fl/fr = front left/right, hl/hr = hind left/right.
+  // L is the cat's left side, seen when it faces right; R is seen when it faces left.
+  const PAINT_LIMITS = { body: [40, 20], neck: [10, 10], head: [20, 20], tail: [24, 3] };
+  function cleanGrid(rows, keys, maxW, maxH) {
+    if (!Array.isArray(rows) || !rows.length || rows.length > maxH) return null;
+    const w = rows[0] && typeof rows[0] === 'string' ? rows[0].length : 0;
+    if (!w || w > maxW || !rows.every(r => typeof r === 'string' && r.length === w)) return null;
+    return rows.map(r => [...r].map(ch => keys[ch] || null));
+  }
+  function cleanPaint(pm, fix) {
+    if (!pm || typeof pm !== 'object' || !pm.k || typeof pm.k !== 'object') return null;
+    const keys = {};
+    for (const [ch, c] of Object.entries(pm.k)) {
+      const h = fix(c);
+      if (ch.length === 1 && ch !== '.' && typeof h === 'string' && HEX.test(h)) keys[ch] = '#' + h.toLowerCase();
+    }
+    const side = s => {
+      if (!s || typeof s !== 'object') return null;
+      const out = {};
+      for (const [part, [mw, mh]] of Object.entries(PAINT_LIMITS)) {
+        const rows = typeof s[part] === 'string' ? [s[part]] : s[part];
+        const gr = cleanGrid(rows, keys, mw, mh);
+        if (gr) out[part] = gr;
+      }
+      return Object.keys(out).length ? out : null;
+    };
+    const L = side(pm.L), R = side(pm.R) || L;
+    const legs = {};
+    if (pm.legs && typeof pm.legs === 'object') for (const n of ['fl', 'fr', 'hl', 'hr']) {
+      const gr = cleanGrid(pm.legs[n], keys, 2, 16);
+      if (gr) legs[n] = gr;
+    }
+    if (!L && !Object.keys(legs).length) return null;
+    return { L: L || {}, R: R || {}, legs };
+  }
   // Specs come from storage, so check everything and drop anything that doesn't fit.
   function cleanSpec(x) {
     // accept 3-digit colors (fa0) by expanding them, so a short color can't break a whole coat
@@ -95,7 +138,10 @@
       m.push(mk);
     }
     const [coat, shade, stripe, eye, closed] = x.c.map(c => '#' + c.toLowerCase());
-    return { name: String(x.n || 'My cat').slice(0, 24), pal: { coat, shade, stripe, eye, closed }, m };
+    const paint = cleanPaint(x.p, fix);
+    // a paint map is painted first (under stripes and other markings) unless a ["paint"] marking says when
+    if (paint && !m.some(k => k.kind === 'paint')) m.unshift({ kind: 'paint', a: [], col: null });
+    return { name: String(x.n || 'My cat').slice(0, 24), pal: { coat, shade, stripe, eye, closed }, m, paint };
   }
   let customCats = [];
   function setCats(list) {
@@ -1387,6 +1433,83 @@
       drawEll(lerp(a.x, b.x, f) - ty / l * half * q.side, lerp(a.y, b.y, f) + tx / l * half * q.side, q.r * s * 0.7, q.r * s * 0.7 * q.asp, Math.atan2(ty, tx) + q.rot, col);
     }
   }
+  // Paint-map cells are drawn as slightly oversized soft ovals, so neighbouring cells merge into patches
+  // with natural, uneven edges.
+  const CELL = 0.68;
+  function paintCell(x, y, du, dv, col) {
+    const a = Math.hypot(du.x, du.y), b = Math.hypot(dv.x, dv.y);
+    if (a < 0.05 || b < 0.05) return;
+    drawEll(x, y, a * CELL, b * CELL, Math.atan2(du.y, du.x), col);
+  }
+  function paintSide() { return cat.fa >= 0 ? 'L' : 'R'; }
+  function paintLeg(Lg, far, pm) {
+    // near legs belong to the side we see: facing right shows the left side
+    const side = paintSide(), near = side === 'L' ? 'l' : 'r', farS = side === 'L' ? 'r' : 'l';
+    const grid = pm.legs[(Lg.front ? 'f' : 'h') + (far ? farS : near)];
+    if (!grid) return;
+    const w = legWidths(Lg), rows = grid.length, cols = grid[0].length;
+    const segPt = t => {
+      const seg = t < 0 ? 0 : t < 1 ? 1 : 2, u = clamp(t - seg + 1, 0, 1);
+      const A = [Lg.A, Lg.K, Lg.D][seg], B = [Lg.K, Lg.D, Lg.P][seg];
+      const dx = B.x - A.x, dy = B.y - A.y, l = Math.hypot(dx, dy) || 1;
+      return { x: lerp(A.x, B.x, u), y: lerp(A.y, B.y, u), nx: -dy / l, ny: dx / l, half: lerp(w[seg], w[seg + 1], u) * 0.5 };
+    };
+    // which way across the leg is "toward the head" depends on the direction the cat faces
+    const fwd = cat.fa >= 0 ? -1 : 1;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      let col = grid[r][c];
+      if (!col) continue;
+      if (far) col = farOf(col);
+      const t = -1 + (r + 0.5) / rows * 3.05, side = cols === 1 ? 0 : (c === 0 ? -0.5 : 0.5) * fwd;
+      const p = segPt(t), p2 = segPt(Math.min(2.05, t + 3.05 / rows));
+      const x = p.x + p.nx * p.half * side, y = p.y + p.ny * p.half * side;
+      // cells span the whole row length and their share of the leg's width, so a painted leg is solid
+      const along = { x: (p2.x - p.x) * 1.15, y: (p2.y - p.y) * 1.15 };
+      const across = { x: p.nx * p.half * 2.3 / cols, y: p.ny * p.half * 2.3 / cols };
+      paintCell(x, y, along, across, col);
+    }
+    if (grid[rows - 1].some(Boolean)) {
+      const toe = grid[rows - 1].find(Boolean);
+      drawPaw(Lg, far ? farOf(toe) : toe);
+    }
+  }
+  function paintBody(r, pm) {
+    const s = r.s, sd = pm[paintSide()];
+    const F = [0, 1, 2, 3, 4].map(i => spineFrame(r, i));
+    const bodyPos = (i, v) => {
+      const i0 = Math.min(3, Math.max(0, Math.floor(i))), f = clamp(i - i0, 0, 1), A = F[i0], B = F[i0 + 1];
+      const off = v * (v >= 0 ? lerp(r.up[i0], r.up[i0 + 1], f) : lerp(r.dn[i0], r.dn[i0 + 1], f));
+      return { x: lerp(A.p.x, B.p.x, f) + lerp(A.n.x, B.n.x, f) * off, y: lerp(A.p.y, B.p.y, f) + lerp(A.n.y, B.n.y, f) * off };
+    };
+    const grid2 = (grid, pos, du0, dv0) => {
+      const rows = grid.length, cols = grid[0].length;
+      for (let rr = 0; rr < rows; rr++) for (let c = 0; c < cols; c++) {
+        const col = grid[rr][c];
+        if (!col) continue;
+        const u = (c + 0.5) / cols, v = (rr + 0.5) / rows;
+        const p = pos(u, v), pu = pos(u + 0.5 / cols, v), pv = pos(u, v + 0.5 / rows);
+        paintCell(p.x, p.y, { x: (pu.x - p.x) * 2, y: (pu.y - p.y) * 2 }, { x: (pv.x - p.x) * 2, y: (pv.y - p.y) * 2 }, col);
+      }
+    };
+    if (sd.tail) grid2(sd.tail, (u, v) => {
+      const ti = clamp(u * (TAIL_N - 1), 0, TAIL_N - 1.001), k = Math.floor(ti), f = ti - k;
+      const a = tail[k], b = tail[Math.min(TAIL_N - 1, k + 1)], z = tail[Math.max(0, k - 1)];
+      const tx = b.x - z.x, ty = b.y - z.y, l = Math.hypot(tx, ty) || 1;
+      const half = lerp(0.08, 0.048, ti / (TAIL_N - 1)) * s * 0.5, side = (v - 0.5) * 2 * (r.fa >= 0 ? 1 : -1);
+      return { x: lerp(a.x, b.x, f) - ty / l * half * side, y: lerp(a.y, b.y, f) + tx / l * half * side };
+    });
+    if (sd.body) grid2(sd.body, (u, v) => bodyPos(u * 4, 1.12 - v * 2.2));
+    if (sd.neck) {
+      const gn = 1 + (settings.girth - 1) * 1.3;
+      const ax = r.chest.x, ay = r.chest.y - 0.02 * s, bx = lerp(r.chest.x, r.head.x, 0.75), by = lerp(r.chest.y, r.head.y, 0.75);
+      const dx = bx - ax, dy = by - ay, l = Math.hypot(dx, dy) || 1, sg = r.fa >= 0 ? 1 : -1;
+      grid2(sd.neck, (u, v) => {
+        const half = lerp(0.2, 0.17, u) * s * gn * 0.5, side = (v - 0.5) * 2 * sg;
+        return { x: lerp(ax, bx, u) - dy / l * half * side, y: lerp(ay, by, u) + dx / l * half * side };
+      });
+    }
+    if (sd.head) grid2(sd.head, (u, v) => headPt(r, -0.17 + u * 0.37, -0.23 + v * 0.36));
+  }
   function legPattern(Lg, pal, far) {
     const pat = settings.pattern, sp = specFor();
     if (!sp && (pat === 'solid' || pat === 'calico' || !BUILTIN_PATTERNS.includes(pat))) return;
@@ -1396,6 +1519,7 @@
       for (const { kind, a, col, pts } of sp.m) {
         if (kind === 'tabby') tabbyLeg(Lg, far, col || pal.stripe);
         else if (kind === 'mottle') mottleLeg(Lg, far, col || pal.stripe, pts);
+        else if (kind === 'paint' && sp.paint) paintLeg(Lg, far, sp.paint);
         else if (kind === 'socks') { const c = col || BIB; legFrom(Lg, clamp(Lg.front ? a[0] : a[1], 0, 2), far ? farOf(c) : c); }
         else if (kind === 'points') { const c = col || pointColor(pal); legFrom(Lg, 0.3, far ? farOf(c) : c); }
       }
@@ -1499,6 +1623,7 @@
       else if (kind === 'tail') { const k = clamp(Math.round(a[0]), 0, TAIL_N - 1); drawPath(tail.slice(k), tail.slice(k).map(() => 0.1 * s), col || pal.stripe); }
       else if (kind === 'points') pointsBody(r, col || pointColor(pal));
       else if (kind === 'mottle') mottleBody(r, col || pal.stripe, pts);
+      else if (kind === 'paint' && sp.paint) paintBody(r, sp.paint);
     }
   }
   function drawPattern(r, pal) {
@@ -1975,8 +2100,10 @@
       else if (msg.type === 'pagecat:hide') hide();
       reply({ visible: running, mood: settings.moodCycle ? mood.name : null });
     });
-    chrome.storage.sync.get(['pagecat', 'pagecatCats'], res => {
-      setCats(res.pagecatCats);
+    // imported cats: the list holds names and sizes, each design sits under its own key
+    const loadCats = all => setCats((Array.isArray(all.pagecatCats) ? all.pagecatCats : []).map(c => ({ id: c.id, spec: c.spec || all['pagecatCat:' + c.id] })));
+    chrome.storage.sync.get(null, res => {
+      loadCats(res);
       applySettings(res.pagecat);
       // Ask the background whether the cat is on this tab (it follows you between tabs).
       if (!window.__pageCatManual) {
@@ -1991,7 +2118,7 @@
     });
     chrome.storage.onChanged.addListener((ch, area) => {
       if (area !== 'sync') return;
-      if (ch.pagecatCats) setCats(ch.pagecatCats.newValue);
+      if (ch.pagecatCats || Object.keys(ch).some(k => k.startsWith('pagecatCat:'))) chrome.storage.sync.get(null, loadCats);
       if (ch.pagecat) applySettings(ch.pagecat.newValue);
       if (ch.pagecatBlocked && (ch.pagecatBlocked.newValue || []).includes(location.hostname) && running) hide();
     });

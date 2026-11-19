@@ -12,8 +12,9 @@
   const store = {};
   window.chrome = {
     storage: { sync: {
-      get: async keys => Object.fromEntries([].concat(keys).filter(k => k in store).map(k => [k, structuredClone(store[k])])),
+      get: async keys => keys == null ? structuredClone(store) : Object.fromEntries([].concat(keys).filter(k => k in store).map(k => [k, structuredClone(store[k])])),
       set: async obj => { Object.assign(store, structuredClone(obj)); },
+      remove: async keys => { for (const k of [].concat(keys)) delete store[k]; },
     } },
     tabs: { query: async () => [{ id: 1, url: 'https://example.com/' }], sendMessage: async () => ({ visible: true, mood: 'chill' }) },
     runtime: { sendMessage: async () => ({ visible: true }) },
@@ -60,6 +61,7 @@
     log.push('size back on Boba: ' + $('size').value + ' (want 50)');
     log.push('stored cats: ' + JSON.stringify(window.__store.pagecatCats.map(c => [c.id, c.name, c.size, c.girth])));
     log.push('stored pattern: ' + window.__store.pagecat.pattern);
+    log.push('design stored separately: ' + Object.keys(window.__store).filter(k => k.startsWith('pagecatCat:')).length + ' (want 1), inline in list: ' + window.__store.pagecatCats.some(c => c.spec));
     const out = document.createElement('pre'); out.id = 'result'; out.textContent = 'POPUPTEST\n' + log.join('\n');
     document.body.append(out);
   }

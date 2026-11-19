@@ -78,9 +78,15 @@ function setVisible(visible, mood) {
 
 async function init() {
   buildPickers();
-  const store = await chrome.storage.sync.get(['pagecat', 'pagecatBlocked', 'pagecatCats']);
+  const store = await chrome.storage.sync.get(null);
   settings = { ...DEFAULTS, ...(store.pagecat || {}) };
-  cats = Array.isArray(store.pagecatCats) ? store.pagecatCats : [];
+  // Each cat's design is stored under its own key (designs can be a few KB, more than one sync item holds
+  // for many cats); the list keeps names and sizes. Older entries kept the design inline: move it out.
+  cats = (Array.isArray(store.pagecatCats) ? store.pagecatCats : []).map(c => ({ ...c, spec: c.spec || store[CAT_KEY + c.id] }));
+  if (cats.some(c => (store.pagecatCats.find(x => x.id === c.id) || {}).spec)) {
+    for (const c of cats) if (c.spec) await chrome.storage.sync.set({ [CAT_KEY + c.id]: c.spec }).catch(() => {});
+    await saveCats();
+  }
   render();
 
   [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -173,8 +179,9 @@ function catMsg(text, isError) {
   m.hidden = !text; m.textContent = text || ''; m.classList.toggle('err', !!isError);
 }
 
+const CAT_KEY = 'pagecatCat:';
 async function saveCats() {
-  try { await chrome.storage.sync.set({ pagecatCats: cats }); return true; }
+  try { await chrome.storage.sync.set({ pagecatCats: cats.map(({ spec, ...meta }) => meta) }); return true; }
   catch (e) { catMsg("Couldn't save your cats. Try removing one you don't use.", true); return false; }
 }
 
@@ -222,6 +229,7 @@ function renderCats() {
       }
       clearTimeout(armed);
       cats = cats.filter(x => x.id !== c.id);
+      await chrome.storage.sync.remove(CAT_KEY + c.id).catch(() => {});
       if (settings.pattern === 'cat:' + c.id) { settings.pattern = 'solid'; save(); }
       await saveCats();
       catMsg(`Removed ${c.name}. Paste the code again to bring them back.`);
@@ -243,8 +251,10 @@ $('addCat').addEventListener('submit', async e => {
     else {
       if (cats.length >= MAX_CATS) { catMsg(`You can keep up to ${MAX_CATS} cats. Remove one to add another.`, true); return; }
       c.size = settings.size; c.girth = settings.girth;
+      try { await chrome.storage.sync.set({ [CAT_KEY + c.id]: c.spec }); }
+      catch (e) { catMsg("Couldn't save this cat. Try removing one you don't use.", true); return; }
       cats.push(c);
-      if (!await saveCats()) { cats.pop(); return; }
+      if (!await saveCats()) { cats.pop(); await chrome.storage.sync.remove(CAT_KEY + c.id).catch(() => {}); return; }
       settings.pattern = 'cat:' + c.id;
       catMsg(`Added ${c.name}. You can rename them any time.`);
     }
