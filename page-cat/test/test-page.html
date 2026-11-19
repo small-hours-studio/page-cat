@@ -98,6 +98,22 @@
       out.textContent = `SCROLLSTAT box=${(onBox / total * 100).toFixed(0)}% floor=${(onFloor / total * 100).toFixed(0)}% hops=${hops}`;
       document.body.appendChild(out);
     }
+    if (scene === 'playstat') {
+      // Five simulated minutes: how often the cat scratches and goes after things on the page.
+      const n = { scratch: 0, wallscratch: 0, swat: 0, bat: 0 }, tm = {};
+      let last = '';
+      for (let i = 0; i < 60 * 300; i++) {
+        if (i % 60 === 0) d.scan();
+        d.step(1 / 60);
+        const st = d.cat.state;
+        if (st !== last && st in n) n[st]++;
+        tm[st] = (tm[st] || 0) + 1;
+        last = st;
+      }
+      const out = document.createElement('pre'); out.id = 'playstat';
+      out.textContent = 'PLAYSTAT ' + Object.entries(n).map(([k, v]) => k + '=' + v).join(' ') + ' | ' + Object.entries(tm).sort((x, y) => y[1] - x[1]).map(([k, v]) => k + ':' + Math.round(v / 180) + '%').join(' ');
+      document.body.appendChild(out);
+    }
     if (scene === 'hold') {
       // Pick the cat up, drag it right, hold still, then let go over the tip card. Frame by t.
       const t = +q.get('t') || 1;

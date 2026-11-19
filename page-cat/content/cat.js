@@ -329,14 +329,15 @@
     const toys = playCandidates();
     const fl = P.floor ? 0.4 : 1;
     const opts = [
-      ['walk', 1.4 * (0.25 + 1.2 * a) * fl], ['sit', 2.4 * (1.3 - a) * fl], ['loaf', 2.5 * (1.3 - a) * fl],
+      ['walk', 1.4 * (0.25 + 0.6 * a) * fl], ['sit', 2.4 * (1.3 - a) * fl], ['loaf', 2.5 * (1.3 - a) * fl],
       ['idle', 1.0 * (1.2 - 0.6 * a) * fl], ['stretch', 0.4 * fl],
-      ['scratch', P.floor ? 0.2 : 0.5],
+      // Livelier cats go at the page much more: scratching, and stealing words and pictures to bat around.
+      ['scratch', (P.floor ? 0.2 : 0.5) + 2.6 * Math.pow(a, 1.5)],
       ['sleep', (cat.energy < 0.3 ? 4 : 0.35) * (1.8 - 1.5 * a) * fl],
     ];
     if (jumps.length) opts.push(['jump', 2.2 * (0.3 + 1.4 * a) * (P.floor ? 3 : 1)]);
     if (P.x1 - P.x0 > 5 * s) opts.push(['zoom', 1.8 * Math.pow(a, 1.5)]);
-    if (toys.length) opts.push(['play', 2.4 * Math.pow(a, 1.5) + 0.1]);
+    if (toys.length) opts.push(['play', 5 * Math.pow(a, 1.5) + 0.1]);
     const st = pick(opts);
     if (st === 'walk') { if (!walkSomewhere()) setState('idle', rr(1, 2)); }
     else if (st === 'jump') { cat.plan = pickExplore(jumps); goWalk(cat.plan.tx); }
@@ -366,7 +367,7 @@
       const z = cat.zoomLeft; cat.zoomLeft = 0;
       if (mouseInterest(true)) return;
       cat.zoomLeft = z;
-    } else if (r < 0.32) {
+    } else if (r < 0.32 + 0.15 * actLevel()) {
       const toys = playCandidates(true);
       if (toys.length) { cat.zoomLeft = 0; goGrab(toys[Math.floor(rand() * toys.length)]); return; }
     } else if (r < 0.58) {
@@ -431,7 +432,7 @@
   function sendHome(fast) {
     if (!prey || prey.mode === 'return') return;
     Object.assign(prey, { mode: 'return', t: 0, rx: prey.x, ry: prey.y, rrot: prey.rot, dur: fast ? 0.35 : 0.9 });
-    cat.preyCool = rr(40, 70) * (1.4 - 0.6 * actLevel());
+    cat.preyCool = rr(40, 70) * lerp(1.4, 0.2, actLevel());
   }
   function updatePrey(dt) {
     if (!prey) return;
@@ -699,7 +700,8 @@
         const vmax = cat.state === 'stalk' ? 0.3 * s
           : cat.state === 'zoom' ? 2.7 * s * (0.85 + 0.3 * a)
           : cat.state === 'chase' ? 2.0 * s * (0.85 + 0.3 * a)
-          : 0.9 * s * (0.85 + 0.3 * a);
+          // On the way to something to scratch or steal, a lively cat trots instead of strolling.
+          : 0.9 * s * (0.85 + 0.3 * a) * (cat.intent ? 1 + 0.9 * a : 1);
         let want = turned ? dir * Math.min(vmax, Math.abs(dx) * 2.2 + 0.12 * s) : 0;
         if (cat.state === 'chase' && Math.abs(dx) < 0.1 * s) want = 0;
         cat.vx += (want - cat.vx) * damp(cat.state === 'zoom' ? 6 : 4, dt);
