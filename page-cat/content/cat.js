@@ -1951,6 +1951,7 @@
         return true;
       },
       pause() { running = false; cancelAnimationFrame(rafId); clearInterval(scanTimer); },
+      clearParticles() { parts.length = 0; },
       hold(x, y) { startHold(x, y); }, moveTo(x, y) { moveHold(x, y); }, release() { releaseHold(); },
       render() { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); g = ctx; drawPrey(); drawCat(); drawParticles(); },
     };

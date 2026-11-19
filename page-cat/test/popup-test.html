@@ -45,7 +45,12 @@
     log.push('chip after rename: ' + document.querySelector('.mycat .chip').textContent);
     log.push('note: ' + $('calicoNote').textContent);
     await wait(400);
-    log.push('stored cats: ' + JSON.stringify(window.__store.pagecatCats.map(c => [c.id, c.name])));
+    // Give Boba her own size, switch away and back: her size should come back.
+    const size = $('size'); size.value = 50; size.dispatchEvent(new Event('input'));
+    document.querySelector('#patterns [data-v="tabby"]').click(); size.value = 30; size.dispatchEvent(new Event('input'));
+    document.querySelector('.mycat .chip').click(); await wait(600);
+    log.push('size back on Boba: ' + $('size').value + ' (want 50)');
+    log.push('stored cats: ' + JSON.stringify(window.__store.pagecatCats.map(c => [c.id, c.name, c.size, c.girth])));
     log.push('stored pattern: ' + window.__store.pagecat.pattern);
     const out = document.createElement('pre'); out.id = 'result'; out.textContent = 'POPUPTEST\n' + log.join('\n');
     document.body.append(out);

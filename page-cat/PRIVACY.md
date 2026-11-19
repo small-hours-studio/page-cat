@@ -10,7 +10,7 @@ Nothing. Page Cat does not collect, store, sell or transmit any personal data, b
 
 ## What it stores
 
-Your cat settings (size, girth, coat, pattern, activity, and on/off switches) and an optional list of sites where you have hidden the cat. These are saved with Chrome's built-in `chrome.storage.sync`, so they stay in your browser and, if you use Chrome sync, in your own Google account. The developer never sees them.
+Your cat settings (size, girth, coat, pattern, activity, and on/off switches) an optional list of sites where you have hidden the cat, and any custom cats you have imported (their name, size and markings). These are saved with Chrome's built-in `chrome.storage.sync`, so they stay in your browser and, if you use Chrome sync, in your own Google account. The developer never sees them.
 
 ## What it reads on a page
 
@@ -20,6 +20,10 @@ To decide where the cat can walk, Page Cat reads the size and position of elemen
 
 - **storage**: saves your cat settings.
 - **All sites** and **scripting**: let the cat appear on the page you're viewing and follow you from tab to tab. On each page it only reads where elements are, to find places to walk. You can turn following off, or keep the cat off any site, from the toolbar menu.
+
+## Custom cat orders
+
+If you order a custom cat, you send your cat's photos and name through the order page on Ko-fi, outside the extension. They are used only to make your cat and are deleted once you have your cat code. Ko-fi and the payment provider handle the payment under their own privacy policies; the developer doesn't see your card details. The cat code holds only the cat's name, colors and markings.
 
 ## Contact
 

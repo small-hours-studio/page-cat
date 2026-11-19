@@ -125,7 +125,12 @@ $('site').addEventListener('change', async e => {
 });
 
 for (const id of ['size', 'girth', 'activity']) {
-  $(id).addEventListener('input', e => { settings[id] = +e.target.value; label(); save(); });
+  $(id).addEventListener('input', e => {
+    settings[id] = +e.target.value; label(); save();
+    // An imported cat keeps its own size and girth.
+    const c = currentCat();
+    if (c && id !== 'activity') { c[id] = settings[id]; saveCatsSoon(); }
+  });
 }
 for (const id of ['follow', 'moodCycle', 'pagePlay', 'cursorPlay']) {
   $(id).addEventListener('change', e => { settings[id] = e.target.checked; label(); save(); });
@@ -153,6 +158,16 @@ async function readCode(text) {
   return { id, name: String(spec.n || 'My cat').slice(0, 24), spec };
 }
 
+function currentCat() { return cats.find(c => 'cat:' + c.id === settings.pattern); }
+// Switching to an imported cat brings back the size and girth it was last given.
+function useCat(c) {
+  settings.pattern = 'cat:' + c.id;
+  if (Number.isFinite(c.size)) settings.size = c.size;
+  if (Number.isFinite(c.girth)) settings.girth = c.girth;
+}
+let catsTimer = 0;
+function saveCatsSoon() { clearTimeout(catsTimer); catsTimer = setTimeout(saveCats, 400); }
+
 function catMsg(text, isError) {
   const m = $('catMsg');
   m.hidden = !text; m.textContent = text || ''; m.classList.toggle('err', !!isError);
@@ -173,7 +188,7 @@ function renderCats() {
     pick.type = 'button'; pick.className = 'chip'; pick.textContent = c.name; pick.title = 'Use ' + c.name;
     pick.setAttribute('role', 'radio');
     pick.setAttribute('aria-checked', String(settings.pattern === 'cat:' + c.id));
-    pick.addEventListener('click', () => { settings.pattern = 'cat:' + c.id; render(); save(); });
+    pick.addEventListener('click', () => { useCat(c); render(); save(); });
 
     const rename = document.createElement('button');
     rename.type = 'button'; rename.className = 'link'; rename.textContent = 'Rename';
@@ -224,9 +239,10 @@ $('addCat').addEventListener('submit', async e => {
   try {
     const c = await readCode(text);
     const have = cats.find(x => x.id === c.id);
-    if (have) { catMsg(`${have.name} is already in your cats.`); settings.pattern = 'cat:' + have.id; }
+    if (have) { catMsg(`${have.name} is already in your cats.`); useCat(have); }
     else {
       if (cats.length >= MAX_CATS) { catMsg(`You can keep up to ${MAX_CATS} cats. Remove one to add another.`, true); return; }
+      c.size = settings.size; c.girth = settings.girth;
       cats.push(c);
       if (!await saveCats()) { cats.pop(); return; }
       settings.pattern = 'cat:' + c.id;

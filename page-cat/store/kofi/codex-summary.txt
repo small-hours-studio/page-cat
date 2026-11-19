@@ -1,0 +1,5 @@
+Created the banner with the built-in image generation tool and saved it as [banner-raw.png](</C:/~Claude Projects/Page Cat/page-cat/store/kofi/banner-raw.png>).
+
+**Dimensions:** 2172 × 724 pixels (3:1).
+
+The generation prompt specified the three cats, abstract web page, warm off-white background, minimal flat style, and no text or logos.
