@@ -14,8 +14,8 @@ Open <https://chrome.google.com/webstore/devconsole> in Chrome. Files are relati
 - **Screenshots** (drag in this order): `store/screenshots/1-perch.png`, `2-play.png`, `3-nap.png`, `4-settings.png`
 - **Small promo tile:** `store/promo-small.png`
 - **Marquee promo tile:** `store/marquee.png`
-- **Homepage URL:** the GitHub repo URL (I'll give it to you once the repo exists)
-- **Support URL:** the repo's Issues page (same)
+- **Homepage URL:** `https://tsassypants.github.io/page-cat/`
+- **Support URL:** `https://github.com/tsassypants/page-cat/issues`
 - **Mature content:** No.
 - Click **Save draft**.
 
@@ -28,7 +28,7 @@ Open <https://chrome.google.com/webstore/devconsole> in Chrome. Files are relati
   - Host permission (the optional all-sites access)
 - **Are you using remote code?** No.
 - **Data usage:** leave every data type unchecked. Tick all three certifications.
-- **Privacy policy URL:** the GitHub Pages link (I'll give it to you).
+- **Privacy policy URL:** `https://tsassypants.github.io/page-cat/privacy.html`
 - Click **Save draft**.
 
 ## 4. Distribution tab
