@@ -4,169 +4,259 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Your order · Page Cat</title>
+<title>Your cat · Page Cat</title>
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="site.css">
 <script src="config.js"></script>
 <style>
-  .cat h3 { margin: 0 0 4px; font-size: 20px; }
+  .cat h2 { margin: 0 0 2px; font-size: 22px; }
+  .compare { display: grid; grid-template-columns: 1fr 1.35fr; gap: 14px; margin: 14px 0 6px; align-items: start; }
+  .compare h3 { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .photos figure { margin: 0; }
+  .photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; display: block; background: var(--soft); cursor: zoom-in; }
+  .photos figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+  .photos.one { grid-template-columns: 1fr; }
+  .stage { position: relative; height: 220px; border-radius: 10px; background: var(--stage); }
+  .stage .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: #e2d3bd; border-radius: 0 0 10px 10px; }
+  .stage .show { color: #2a221c; border-color: #cdbba3; position: absolute; inset: 0; margin: auto; height: fit-content; width: fit-content; }
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; margin-right: 6px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
-  .stage { position: relative; height: 190px; border-radius: 10px; background: var(--stage); margin: 12px 0 4px; }
-  .stage .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: #e2d3bd; border-radius: 0 0 10px 10px; }
+  .note { background: var(--soft); border-radius: 8px; padding: 10px 12px; margin: 10px 0; font-size: 15px; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+  .ver { border-top: 1px solid var(--line); padding: 10px 0; font-size: 15px; }
+  .ver .code { font-size: 11px; max-height: 3.2em; overflow: hidden; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; }
   .photos-in { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  dialog { border: 0; border-radius: 12px; padding: 0; max-width: 92vw; background: transparent; }
+  dialog img { max-width: 92vw; max-height: 86vh; display: block; border-radius: 12px; }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+  @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <main>
   <a class="top" href="custom.html"><img src="icon.png" alt="">Page Cat</a>
-  <h1>Your order</h1>
+  <h1 id="title">Your cat</h1>
   <p class="lede" id="lede">Loading…</p>
-  <p class="small" id="keep" hidden>Keep this page's link: it's how you get back to your order. We also email it to you.</p>
   <div id="cats"></div>
+  <p class="small" id="keep" hidden>Keep this page's link: it's how you get back to your cats and their codes.</p>
   <footer><a href="custom.html">Custom cats</a> · <a href="privacy.html">Privacy policy</a> · Small Hours Studio</footer>
 </main>
+<dialog id="zoom"><img alt=""></dialog>
+<script src="js/order-api.js"></script>
 <script src="js/cat.js"></script>
 <script>
-  const q = new URLSearchParams(location.search);
-  // ?api= is for local testing only, so a crafted link can't send orders anywhere else
-  const testApi = q.get('api') || '';
-  const API = /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(testApi) ? testApi : window.ORDER_API;
-  const ORDER = q.get('order'), KEY = q.get('key');
+  const { ORDER, KEY, call, link, photoUrl } = window.orderApi;
   const $ = id => document.getElementById(id);
-  let showing = -1, timer = 0, last = '';
+  let order = null, last = '', timer = 0;
+  let showing = null; // { cat, version } walking on the page right now
+  const open = new Set(); // forms the customer has open, so a refresh doesn't wipe what they typed
 
-  // The cat that walks around this page is the real Page Cat, drawn with the customer's design.
-  function showCat(i, spec) {
-    const d = window.__pageCat;
+  // The cat walking on this page is the real Page Cat, drawn with the customer's design.
+  function showCat(i, v) {
+    if (!order) return;
+    const d = window.__pageCat, spec = order.cats[i].versions[v] && order.cats[i].versions[v].spec;
     if (!d || !spec) return;
-    d.setCats([{ id: 'c' + i, spec }]);
-    d.applySettings({ ...d.settings, size: 80, activity: 0.5, moodCycle: false, pattern: 'cat:c' + i });
-    showing = i;
+    d.setCats([{ id: `c${i}v${v}`, spec }]);
+    d.applySettings({ ...d.settings, size: 80, activity: 0.5, moodCycle: false, pattern: `cat:c${i}v${v}` });
+    showing = { cat: i, version: v };
     placeOnStage();
   }
-  // Put the cat on its card's stage (a light floor, so dark cats show up); from there it wanders.
   function placeOnStage() {
-    const d = window.__pageCat, floor = document.querySelector(`[data-stage="${showing}"] .floor`);
+    const d = window.__pageCat, floor = showing && document.querySelector(`[data-stage="${showing.cat}"] .floor`);
     if (d && floor) d.placeOn(floor, 0.5, 'idle', 2);
-  }
-
-  async function call(path, body) {
-    const res = await fetch(API + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: KEY, ...body }) } : {});
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Something went wrong. Please try again.');
-    return data;
   }
 
   async function load() {
     clearTimeout(timer);
     let o;
-    try { o = await call(`/api/orders/${ORDER}?key=${encodeURIComponent(KEY || '')}`); }
+    try { o = await call(`/api/orders/${ORDER}?key=${encodeURIComponent(KEY)}`); }
     catch (e) { $('lede').textContent = e.message; return; }
+    // Still waiting for the first design of every cat: the making page is the place to wait.
+    if (o.status === 'unpaid' || o.cats.every(c => !c.versions.length && (c.status === 'making' || c.status === 'unpaid'))) { location.replace(link('making.html')); return; }
+    order = o;
     const sig = JSON.stringify(o);
-    if (sig !== last) { last = sig; render(o); }
-    const busy = o.status === 'unpaid' || o.cats.some(c => c.status === 'making' || c.status === 'unpaid');
-    if (busy) timer = setTimeout(load, o.status === 'unpaid' ? 3000 : 8000);
+    if (sig !== last) { last = sig; render(); }
+    if (o.cats.some(c => c.status === 'making')) timer = setTimeout(load, 6000);
   }
 
-  function render(o) {
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function btn(text, cls, fn) { const b = el('button', 'btn' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.onclick = fn; return b; }
+  function alertIn(box, msg) { let a = box.querySelector(':scope > .err'); if (!a) { a = el('p', 'err'); a.setAttribute('role', 'alert'); box.append(a); } a.textContent = msg; }
+  async function copy(b, text) { try { await navigator.clipboard.writeText(text); b.textContent = 'Copied'; } catch (e) { b.textContent = 'Select and copy the code above'; } }
+
+  function render() {
+    const o = order, many = o.cats.length > 1;
+    $('title').textContent = many ? 'Your cats' : o.cats[0].name;
+    $('lede').textContent = `Here's ${many ? 'each cat' : o.cats[0].name} next to your photos, with ${many ? 'their codes' : 'the code'}. If something's off, ask for a change.`;
     $('keep').hidden = false;
-    $('lede').textContent = o.status === 'unpaid' ? 'Waiting for your payment to come through…'
-      : o.cats.every(c => c.status === 'approved') ? 'All done. Enjoy your cat' + (o.cats.length > 1 ? 's' : '') + '!'
-      : 'Thanks! Here is how your order is going.';
+    // which design walks around: the first cat's newest, or the newest after a change arrives
+    let want = showing;
+    if (!showing || !o.cats[showing.cat].versions[showing.version]) {
+      const first = o.cats.findIndex(c => c.versions.length);
+      want = first >= 0 ? { cat: first, version: o.cats[first].versions.length - 1 } : null;
+    } else if (showing.version !== o.cats[showing.cat].versions.length - 1 && !open.has('older' + showing.cat)) {
+      want = { cat: showing.cat, version: o.cats[showing.cat].versions.length - 1 };
+    }
+    const changed = want && (!showing || want.cat !== showing.cat || want.version !== showing.version);
+    if (want) showing = want;
     const box = $('cats');
     box.replaceChildren();
-    let firstReady = -1;
-    o.cats.forEach((c, i) => {
-      const el = document.createElement('section');
-      el.className = 'card cat';
-      const h = document.createElement('h3'); h.textContent = c.name; el.append(h);
-      const p = document.createElement('p'); p.style.margin = '0'; el.append(p);
-      if (c.status === 'unpaid' || c.status === 'making') {
-        p.innerHTML = '<span class="spinner"></span>';
-        p.append(c.status === 'unpaid' ? 'Waiting for payment.' : `Making ${c.name}. This usually takes a few minutes; you can close this page and come back.`);
-      } else if (c.status === 'ready' || c.status === 'approved') {
-        if (firstReady < 0) firstReady = i;
-        p.textContent = c.status === 'ready'
-          ? `Here's ${c.name}, walking around this page. Watch both sides as they turn. If anything's off, tell us what to change.`
-          : `${c.name} is ready. Here's the code:`;
-        const stage = document.createElement('div'); stage.className = 'stage'; stage.dataset.stage = i;
-        stage.innerHTML = '<div class="floor"></div>'; el.append(stage);
-        const actions = document.createElement('div'); actions.className = 'actions';
-        const show = document.createElement('button'); show.className = 'btn quiet'; show.type = 'button';
-        show.textContent = showing === i ? `Showing ${c.name}` : `Show ${c.name}`;
-        show.onclick = () => { showCat(i, c.spec); render(o); };
-        actions.append(show);
-        if (c.status === 'ready') {
-          const ok = document.createElement('button'); ok.className = 'btn'; ok.type = 'button'; ok.textContent = `That's ${c.name}! Get the code`;
-          ok.onclick = async () => { ok.disabled = true; try { await call(`/api/orders/${ORDER}/approve`, { cat: i }); await load(); } catch (e) { alertIn(el, e.message); ok.disabled = false; } };
-          actions.append(ok);
-          if (c.revisionsLeft > 0) {
-            const ch = document.createElement('button'); ch.className = 'btn quiet'; ch.type = 'button';
-            ch.textContent = `Something's off (${c.revisionsLeft} change${c.revisionsLeft > 1 ? 's' : ''} left)`;
-            ch.onclick = () => changeForm(el, c, i);
-            actions.append(ch);
-          }
-        } else {
-          const code = document.createElement('p'); code.className = 'code'; code.textContent = c.code; el.insertBefore(code, stage);
-          const copy = document.createElement('button'); copy.className = 'btn'; copy.type = 'button'; copy.textContent = 'Copy code';
-          copy.onclick = async () => { await navigator.clipboard.writeText(c.code); copy.textContent = 'Copied'; };
-          actions.prepend(copy);
-          const how = document.createElement('p'); how.className = 'small';
-          how.textContent = 'To add your cat: click the Page Cat button in your Chrome toolbar, paste the code under "Your cats", and click Import.';
-          el.append(how);
-        }
-        el.append(actions);
-      } else if (c.status === 'needs_photos') {
-        p.textContent = c.message || `We couldn't make out ${c.name}'s coat. Please add clearer photos.`;
-        photoForm(el, i);
-      } else {
-        p.textContent = c.message || 'Something went wrong. We have been told and will email you.';
-      }
-      box.append(el);
-    });
-    if (showing < 0 && firstReady >= 0) { showCat(firstReady, o.cats[firstReady].spec); render(o); }
-    else if (showing >= 0) placeOnStage();
+    o.cats.forEach((c, i) => box.append(catCard(c, i)));
+    if (changed) showCat(want.cat, want.version); else placeOnStage();
+    for (const k of open) { const f = document.getElementById(k); if (f && f.tagName === 'DETAILS') f.open = true; }
   }
 
-  function alertIn(el, msg) { let a = el.querySelector('.err'); if (!a) { a = document.createElement('p'); a.className = 'err'; a.setAttribute('role', 'alert'); el.append(a); } a.textContent = msg; }
+  function catCard(c, i) {
+    const card = el('section', 'card cat');
+    card.append(el('h2', '', c.name));
+    const nv = c.versions.length, cur = c.versions[nv - 1];
 
-  function changeForm(el, c, i) {
-    if (el.querySelector('textarea')) return;
-    const lab = document.createElement('label'); lab.className = 'field'; lab.textContent = 'What should change?';
-    const ta = document.createElement('textarea'); ta.maxLength = 600; ta.placeholder = 'e.g. Her left ear is black, and her back paws are white up to the ankle.';
-    lab.htmlFor = ta.id = 'note' + i;
-    const send = document.createElement('button'); send.className = 'btn'; send.type = 'button'; send.textContent = 'Send';
-    send.onclick = async () => { send.disabled = true; try { await call(`/api/orders/${ORDER}/revise`, { cat: i, note: ta.value }); await load(); } catch (e) { alertIn(el, e.message); send.disabled = false; } };
-    el.append(lab, ta, send);
+    if (!nv) {
+      const p = el('p');
+      if (c.status === 'making') { p.innerHTML = '<span class="spinner"></span>'; p.append(`Making ${c.name}. This usually takes a few minutes.`); }
+      else if (c.status === 'needs_photos') { p.textContent = c.message || `We couldn't make out ${c.name}'s coat. Please add clearer photos.`; card.append(p); photoForm(card, i); return card; }
+      else p.textContent = c.message || 'Something went wrong. We have been told and will email you.';
+      card.append(p);
+      return card;
+    }
+
+    const sub = el('p', 'small', nv > 1 ? `Version ${nv} · ${why(cur)}` : 'First version');
+    sub.style.margin = '0'; card.append(sub);
+
+    // photo next to the cat
+    const cmp = el('div', 'compare');
+    const left = el('div'); left.append(el('h3', '', 'Your photos'));
+    const grid = el('div', 'photos' + (c.photos.length === 1 ? ' one' : ''));
+    if (c.photos.length) for (const ph of c.photos) {
+      const fig = el('figure'), img = el('img'); img.alt = `${c.name}, ${ph.label || 'photo'}`; img.loading = 'lazy'; img.src = photoUrl(ph.file);
+      img.onclick = () => { $('zoom').querySelector('img').src = img.src; $('zoom').showModal(); };
+      img.onerror = () => fig.remove();
+      fig.append(img, el('figcaption', '', ph.label || '')); grid.append(fig);
+    } else grid.append(el('p', 'small', 'Photos are deleted 30 days after ordering.'));
+    left.append(grid);
+    const right = el('div');
+    const onStage = showing && showing.cat === i;
+    right.append(el('h3', '', onStage && showing.version !== nv - 1 ? `Your Page Cat (version ${showing.version + 1})` : 'Your Page Cat'));
+    const stage = el('div', 'stage'); stage.dataset.stage = i; stage.append(el('div', 'floor'));
+    if (!onStage) stage.append(btn(`Show ${c.name} here`, 'quiet show', () => { showCat(i, nv - 1); render(); }));
+    right.append(stage);
+    right.append(el('p', 'small', onStage ? `${c.name} walks around the whole page. Watch both sides as they turn.` : ''));
+    cmp.append(left, right); card.append(cmp);
+
+    if (c.status === 'making') {
+      const p = el('p', 'note'); p.innerHTML = '<span class="spinner"></span>';
+      p.append(`Making your change${c.pendingNote ? `: "${c.pendingNote}"` : ''}. This takes a few minutes; the code below still works.`);
+      card.append(p);
+    } else if (c.message) card.append(el('p', 'note', c.message));
+
+    // the code
+    card.append(el('label', 'field', nv > 1 ? 'Code (newest version)' : 'Code'));
+    const code = el('p', 'code', cur.code); card.append(code);
+    const acts = el('div', 'actions');
+    const cp = btn('Copy code', '', () => copy(cp, cur.code)); acts.append(cp);
+    if (c.status === 'ready' && c.revisionsLeft > 0)
+      acts.append(btn(`Ask for a change (${c.revisionsLeft} left)`, 'quiet', () => { open.add('change' + i); render(); }));
+    card.append(acts);
+    card.append(el('p', 'small', 'To add your cat: click the Page Cat button in your Chrome toolbar, paste the code under "Your cats", and click Import.'));
+    if (open.has('change' + i) && c.status === 'ready' && c.revisionsLeft > 0) changeForm(card, c, i);
+    if (c.status === 'ready' && c.revisionsLeft < 1 && o_changesClosedNote(c)) card.append(el('p', 'small', o_changesClosedNote(c)));
+
+    // earlier versions
+    if (nv > 1) {
+      const det = el('details'); det.id = 'older' + i;
+      det.ontoggle = () => det.open ? open.add(det.id) : open.delete(det.id);
+      det.append(el('summary', '', `Earlier versions (${nv - 1})`));
+      for (let v = nv - 2; v >= 0; v--) {
+        const row = el('div', 'ver');
+        const vv = c.versions[v];
+        row.append(el('div', '', `Version ${v + 1}${v ? ' · ' + why(vv) : ''}`));
+        row.append(el('p', 'code', vv.code));
+        const a = el('div', 'actions'); a.style.marginTop = '4px';
+        const b = btn('Copy this code', 'quiet', () => copy(b, vv.code)); a.append(b);
+        a.append(btn(showing && showing.cat === i && showing.version === v ? 'Showing' : 'Show this version', 'quiet', () => { showCat(i, v); render(); }));
+        row.append(a); det.append(row);
+      }
+      card.append(det);
+    }
+
+    // problems after changes run out
+    const rep = el('p', 'small');
+    if (c.openTickets) rep.textContent = "We've got your message about this cat and will get back to you by email.";
+    else { const l = el('button', 'linkbtn', 'Report a problem'); l.type = 'button'; l.onclick = () => { open.add('ticket' + i); render(); }; rep.append('Something wrong we can\'t fix with a change? ', l); }
+    card.append(rep);
+    if (open.has('ticket' + i) && !c.openTickets) ticketForm(card, i);
+    return card;
+  }
+
+  function why(v) { return v.by === 'customer' && v.note ? `after your change: "${v.note}"` : 'updated by us'; }
+
+  function o_changesClosedNote(c) {
+    return order.changesOpen ? "You've used both changes. If it still isn't right, report a problem and we'll fix it by hand."
+      : 'Changes are closed for this order. If something is wrong, report a problem.';
+  }
+
+  function changeForm(card, c, i) {
+    const lab = el('label', 'field', 'What should change?');
+    const ta = el('textarea'); ta.maxLength = 600; ta.id = 'note' + i; lab.htmlFor = ta.id;
+    ta.placeholder = 'e.g. Her left ear is black, and her back paws are white up to the ankle.';
+    ta.value = sessionStorageGet('note' + i); ta.oninput = () => sessionStorageSet('note' + i, ta.value);
+    const acts = el('div', 'actions');
+    const send = btn('Send change', '', async () => {
+      send.disabled = true;
+      try { await call(`/api/orders/${ORDER}/revise`, { key: KEY, cat: i, note: ta.value }); open.delete('change' + i); sessionStorageSet('note' + i, ''); await load(); }
+      catch (e) { alertIn(card, e.message); send.disabled = false; }
+    });
+    acts.append(send, btn('Cancel', 'quiet', () => { open.delete('change' + i); render(); }));
+    card.append(lab, ta, el('p', 'small', `Be specific: which side, which leg, what colour. You have ${c.revisionsLeft} change${c.revisionsLeft > 1 ? 's' : ''} left.`), acts);
     ta.focus();
   }
 
-  function photoForm(el, i) {
-    const wrap = document.createElement('div'); wrap.className = 'photos-in';
+  function ticketForm(card, i) {
+    const lab = el('label', 'field', "What's wrong?");
+    const ta = el('textarea'); ta.maxLength = 1500; ta.id = 'ticket' + i + 'text'; lab.htmlFor = ta.id;
+    ta.value = sessionStorageGet('ticket' + i); ta.oninput = () => sessionStorageSet('ticket' + i, ta.value);
+    const acts = el('div', 'actions');
+    const send = btn('Send', '', async () => {
+      send.disabled = true;
+      try { await call(`/api/orders/${ORDER}/ticket`, { key: KEY, cat: i, message: ta.value }); open.delete('ticket' + i); sessionStorageSet('ticket' + i, ''); await load(); }
+      catch (e) { alertIn(card, e.message); send.disabled = false; }
+    });
+    acts.append(send, btn('Cancel', 'quiet', () => { open.delete('ticket' + i); render(); }));
+    card.append(lab, ta, el('p', 'small', "We'll look at your photos and your cat and reply by email."), acts);
+    ta.focus();
+  }
+
+  function photoForm(card, i) {
+    const wrap = el('div', 'photos-in');
     const inputs = {};
     for (const [label, text] of [['left', 'Left side'], ['right', 'Right side'], ['face', 'Face']]) {
-      const l = document.createElement('label'); l.className = 'small'; l.textContent = text + ' ';
-      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inputs[label] = inp;
+      const l = el('label', 'small', text + ' ');
+      const inp = el('input'); inp.type = 'file'; inp.accept = 'image/*'; inputs[label] = inp;
       l.append(inp); wrap.append(l);
     }
-    const send = document.createElement('button'); send.className = 'btn'; send.type = 'button'; send.textContent = 'Send photos';
-    send.onclick = async () => {
+    const send = btn('Send photos', '', async () => {
       const fd = new FormData(); fd.append('key', KEY); fd.append('cat', i);
       let n = 0;
       for (const [label, inp] of Object.entries(inputs)) if (inp.files[0]) { fd.append('photo_' + label, inp.files[0]); n++; }
-      if (!n) return alertIn(el, 'Add at least one photo.');
+      if (!n) return alertIn(card, 'Add at least one photo.');
       send.disabled = true;
-      const res = await fetch(`${API}/api/orders/${ORDER}/photos`, { method: 'POST', body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { alertIn(el, data.error || 'Upload failed.'); send.disabled = false; return; }
-      load();
-    };
-    el.append(wrap, send);
+      const res = await fetch(`${window.orderApi.API}/api/orders/${ORDER}/photos`, { method: 'POST', body: fd }).catch(() => null);
+      const data = res ? await res.json().catch(() => ({})) : {};
+      if (!res || !res.ok) { alertIn(card, data.error || 'Upload failed.'); send.disabled = false; return; }
+      location.replace(link('making.html'));
+    });
+    card.append(wrap, send);
   }
 
+  function sessionStorageGet(k) { try { return sessionStorage.getItem('pc-' + ORDER + k) || ''; } catch (e) { return ''; } }
+  function sessionStorageSet(k, v) { try { sessionStorage.setItem('pc-' + ORDER + k, v); } catch (e) {} }
+
+  $('zoom').onclick = () => $('zoom').close();
   if (!ORDER || !KEY) $('lede').textContent = 'This link is missing its order details. Use the link from your email.';
   else load();
 </script>

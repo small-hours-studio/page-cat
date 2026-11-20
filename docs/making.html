@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Making your cat · Page Cat</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="site.css">
+<script src="config.js"></script>
+<style>
+  .row { display: flex; align-items: center; gap: 12px; }
+  .row b { flex: 1; }
+  .state { color: var(--muted); font-size: 15px; }
+  .state.done { color: var(--accent); font-weight: 650; }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; flex: none; }
+  .tick { width: 16px; height: 16px; flex: none; color: var(--accent); font-weight: 700; line-height: 16px; text-align: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+  .bar { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; margin-top: 10px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 1s linear; }
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="custom.html"><img src="icon.png" alt="">Page Cat</a>
+  <h1 id="title">Making your cat</h1>
+  <p class="lede" id="lede">Loading…</p>
+  <div id="cats"></div>
+  <p class="small" id="keep" hidden>You can close this page; your cats keep being made. Bookmark it to come back.</p>
+  <footer><a href="custom.html">Custom cats</a> · <a href="privacy.html">Privacy policy</a> · Small Hours Studio</footer>
+</main>
+<script src="js/order-api.js"></script>
+<script>
+  const { ORDER, KEY, call, link } = window.orderApi;
+  const $ = id => document.getElementById(id);
+  const started = Date.now();
+  const EXPECT = 4 * 60 * 1000; // a cat usually takes a few minutes; the bar is only a rough guide
+
+  async function load() {
+    let o;
+    try { o = await call(`/api/orders/${ORDER}?key=${encodeURIComponent(KEY)}`); }
+    catch (e) { $('lede').textContent = e.message; setTimeout(load, 10000); return; }
+    const busy = c => c.status === 'unpaid' || (c.status === 'making' && !c.versions.length);
+    // Every cat has something to show (or needs the customer): go to the results page.
+    if (o.status !== 'unpaid' && !o.cats.some(busy)) { location.replace(link('status.html')); return; }
+    render(o);
+    setTimeout(load, o.status === 'unpaid' ? 3000 : 6000);
+  }
+
+  function render(o) {
+    const n = o.cats.length;
+    $('title').textContent = n > 1 ? 'Making your cats' : `Making ${o.cats[0].name}`;
+    $('lede').textContent = o.status === 'unpaid'
+      ? 'Waiting for your payment to come through…'
+      : `Payment received, thank you! We're studying your photos and painting ${n > 1 ? 'each coat' : 'the coat'}. This usually takes a few minutes.`;
+    $('keep').hidden = o.status === 'unpaid';
+    const box = $('cats');
+    box.replaceChildren();
+    for (const c of o.cats) {
+      const card = document.createElement('div'); card.className = 'card';
+      const row = document.createElement('div'); row.className = 'row';
+      const done = c.versions.length > 0 || c.status === 'needs_photos' || c.status === 'failed';
+      const icon = document.createElement('span'); icon.className = done ? 'tick' : 'spinner'; icon.textContent = done ? '✓' : '';
+      const name = document.createElement('b'); name.textContent = c.name;
+      const st = document.createElement('span'); st.className = 'state' + (done ? ' done' : '');
+      st.textContent = c.status === 'unpaid' ? 'Waiting for payment' : c.versions.length ? 'Ready' : c.status === 'needs_photos' ? 'Needs another photo' : c.status === 'failed' ? 'Hit a snag' : 'Making…';
+      row.append(icon, name, st); card.append(row);
+      if (!done && c.status === 'making') {
+        const bar = document.createElement('div'); bar.className = 'bar';
+        const fill = document.createElement('i'); fill.style.width = Math.min(92, 8 + 84 * (Date.now() - started) / EXPECT) + '%';
+        bar.append(fill); card.append(bar);
+      }
+      box.append(card);
+    }
+  }
+
+  if (!ORDER || !KEY) $('lede').textContent = 'This link is missing its order details. Use the link from your email.';
+  else load();
+</script>
+</body>
+</html>

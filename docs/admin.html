@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Orders · Page Cat</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="site.css">
+<script src="config.js"></script>
+<style>
+  main { max-width: 1000px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; }
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: var(--soft); }
+  .pill { display: inline-block; font-size: 12px; font-weight: 650; border-radius: 99px; padding: 1px 8px; background: var(--soft); }
+  .pill.t { background: var(--err); color: #fff; }
+  .bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+  .bar input[type=text] { flex: 1; min-width: 200px; width: auto; }
+  .bar label { white-space: nowrap; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; font-size: 15px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; word-break: break-all; }
+  .photos { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .photos img { width: 160px; height: 160px; object-fit: cover; border-radius: 8px; cursor: zoom-in; background: var(--soft); }
+  .stage { position: relative; height: 200px; border-radius: 10px; background: var(--stage); margin: 8px 0; }
+  .stage .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: #e2d3bd; border-radius: 0 0 10px 10px; }
+  .ver { border-top: 1px solid var(--line); padding: 8px 0; font-size: 15px; }
+  .ver .code { font-size: 11px; max-height: 3.2em; overflow: hidden; margin: 4px 0; }
+  pre { font-size: 12px; background: var(--soft); padding: 10px; border-radius: 8px; overflow: auto; max-height: 300px; }
+  .tk { background: var(--soft); border-radius: 8px; padding: 10px; margin: 8px 0; }
+  .tk.closed { opacity: .6; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .btn.sm { padding: 8px 12px; font-size: 14px; }
+  .log { font-size: 13px; color: var(--muted); }
+  dialog { border: 0; border-radius: 12px; padding: 0; background: transparent; }
+  dialog img { max-width: 92vw; max-height: 86vh; display: block; border-radius: 12px; }
+  dialog::backdrop { background: rgba(0,0,0,.7); }
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="index.html"><img src="icon.png" alt="">Page Cat</a>
+  <h1>Orders</h1>
+
+  <form id="login" class="card" hidden>
+    <label class="field" for="pw">Admin password</label>
+    <input type="password" id="pw" autocomplete="current-password">
+    <p class="err" id="loginErr" hidden></p>
+    <div class="actions"><button class="btn" type="submit">Open</button></div>
+  </form>
+
+  <div id="list" hidden>
+    <div class="bar">
+      <input type="text" id="q" placeholder="Search order number, email or cat name">
+      <label class="small"><input type="checkbox" id="onlyTickets"> Open tickets only</label>
+      <label class="small"><input type="checkbox" id="hideUnpaid" checked> Hide unpaid</label>
+      <button class="btn quiet sm" type="button" id="logout">Log out</button>
+    </div>
+    <p class="small" id="summary"></p>
+    <table><thead><tr><th>Date</th><th>Order</th><th>Email</th><th>Cats</th><th>Paid</th><th>Status</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+
+  <div id="detail" hidden></div>
+</main>
+<dialog id="zoom"><img alt=""></dialog>
+<script src="js/order-api.js"></script>
+<script src="js/cat.js"></script>
+<script>
+  const { API, call } = window.orderApi;
+  const $ = id => document.getElementById(id);
+  let pw = '';
+  try { pw = sessionStorage.getItem('pc-admin') || ''; } catch (e) {}
+  const auth = () => ({ Authorization: 'Bearer ' + pw });
+  const get = path => call(path, undefined, auth());
+  const post = (path, body) => call(path, body || {}, auth());
+  const fmt = t => t ? new Date(t).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+  const money = c => c != null ? '$' + (c / 100).toFixed(2) : '';
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function btn(text, cls, fn) { const b = el('button', 'btn sm' + (cls ? ' ' + cls : ''), text); b.type = 'button'; b.onclick = fn; return b; }
+  async function copy(b, text) { try { await navigator.clipboard.writeText(text); b.textContent = 'Copied'; } catch (e) {} }
+  let all = [];
+
+  $('login').onsubmit = async e => {
+    e.preventDefault();
+    pw = $('pw').value;
+    try { await loadList(); try { sessionStorage.setItem('pc-admin', pw); } catch (e) {} }
+    catch (ex) { $('loginErr').textContent = ex.message; $('loginErr').hidden = false; }
+  };
+  $('logout').onclick = () => { try { sessionStorage.removeItem('pc-admin'); } catch (e) {} pw = ''; route(); };
+
+  async function loadList() {
+    const d = await get('/api/admin/orders');
+    all = d.orders;
+    $('login').hidden = true;
+    drawList();
+  }
+  function drawList() {
+    const q = $('q').value.toLowerCase().trim();
+    const rows = all.filter(o => (!q || o.id.includes(q) || (o.email || '').toLowerCase().includes(q) || (o.names || '').toLowerCase().includes(q))
+      && (!$('onlyTickets').checked || o.openTickets > 0) && (!$('hideUnpaid').checked || o.status !== 'unpaid'));
+    const paid = all.filter(o => o.status && o.status !== 'unpaid');
+    $('summary').textContent = `${paid.length} paid order${paid.length === 1 ? '' : 's'}, ${money(paid.reduce((s, o) => s + (o.amount || 0), 0))} before Stripe fees. ${all.reduce((s, o) => s + (o.openTickets || 0), 0)} open ticket(s).`;
+    const tb = $('rows'); tb.replaceChildren();
+    for (const o of rows) {
+      const tr = el('tr', 'row');
+      tr.onclick = () => { location.hash = o.id; };
+      tr.append(el('td', '', fmt(o.created)), el('td', '', o.id), el('td', '', o.email || ''), el('td', '', o.names || o.count), el('td', '', o.status === 'unpaid' ? '' : money(o.amount)));
+      const st = el('td'); st.append(el('span', 'pill', o.status));
+      if (o.openTickets) { st.append(' '); st.append(el('span', 'pill t', `${o.openTickets} ticket${o.openTickets > 1 ? 's' : ''}`)); }
+      tr.append(st); tb.append(tr);
+    }
+    $('list').hidden = false; $('detail').hidden = true;
+  }
+  for (const id of ['q', 'onlyTickets', 'hideUnpaid']) $(id).oninput = drawList;
+
+  async function photoBlob(id, file) {
+    const res = await fetch(`${API}/api/admin/photo/${id}/${file}`, { headers: auth() });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  }
+
+  function showCat(key, spec) {
+    const d = window.__pageCat; if (!d) return;
+    d.setCats([{ id: key, spec }]);
+    d.applySettings({ ...d.settings, size: 80, activity: 0.5, moodCycle: false, pattern: 'cat:' + key });
+    const floor = document.querySelector(`[data-stage="${key.split('v')[0]}"] .floor`);
+    if (floor) d.placeOn(floor, 0.5, 'idle', 2);
+  }
+
+  async function loadOrder(id) {
+    const d = await get('/api/admin/orders/' + id);
+    const o = d.order, box = $('detail');
+    box.replaceChildren();
+    const back = el('p'); const a = el('a', '', '← All orders'); a.href = '#'; back.append(a); box.append(back);
+    box.append(el('h2', '', `Order ${o.id}`));
+    const kv = el('dl', 'kv');
+    const add = (k, v, href) => { kv.append(el('dt', '', k)); const dd = el('dd'); if (href) { const l = el('a', '', v); l.href = href; l.target = '_blank'; l.rel = 'noopener'; dd.append(l); } else dd.textContent = v; kv.append(dd); };
+    add('Ordered', fmt(o.created)); add('Paid', o.paidAt ? `${fmt(o.paidAt)} · ${money(o.amount)}` : 'not paid');
+    add('Email', o.email || ''); if (o.buyer) add('Name on payment', o.buyer);
+    if (o.paymentIntent) add('Stripe', o.paymentIntent, `https://dashboard.stripe.com/payments/${o.paymentIntent}`);
+    add("Customer's page", 'open as customer', d.link);
+    const cost = d.cats.reduce((s, c) => s + (c.cost || 0), 0);
+    add('Claude cost', '$' + cost.toFixed(2));
+    box.append(kv);
+
+    d.cats.forEach((c, i) => box.append(catCard(o, c, i)));
+    box.hidden = false; $('list').hidden = true;
+    const first = d.cats.findIndex(c => c.versions.length);
+    if (first >= 0) showCat(`${first}v${d.cats[first].versions.length - 1}`, d.cats[first].versions[d.cats[first].versions.length - 1].spec);
+  }
+
+  function catCard(o, c, i) {
+    const card = el('section', 'card');
+    const h = el('h2', '', `Cat ${i + 1}: ${c.name}`); h.style.marginTop = '0'; card.append(h);
+    card.append(el('p', 'small', `Status: ${c.status} · changes left: ${c.revisionsLeft} · versions: ${c.versions.length} · cost $${(c.cost || 0).toFixed(2)}${c.message ? ' · message: ' + c.message : ''}`));
+
+    const ph = el('div', 'photos');
+    if (c.photosKept) for (const p of c.photos) {
+      const img = el('img'); img.alt = p.label || 'photo'; img.title = p.label || '';
+      photoBlob(o.id, p.file).then(u => { if (u) img.src = u; else img.remove(); });
+      img.onclick = () => { $('zoom').querySelector('img').src = img.src; $('zoom').showModal(); };
+      ph.append(img);
+    } else ph.append(el('p', 'small', 'Photos deleted (older than 30 days).'));
+    card.append(ph);
+    const stage = el('div', 'stage'); stage.dataset.stage = i; stage.append(el('div', 'floor')); card.append(stage);
+
+    // tickets
+    c.tickets.forEach((t, k) => {
+      const tk = el('div', 'tk' + (t.closed ? ' closed' : ''));
+      tk.append(el('b', '', `Ticket ${k + 1} · ${fmt(t.at)}${t.closed ? ' · closed' : ''}`), el('p', '', t.message));
+      if (t.reply) tk.append(el('p', 'small', 'Reply: ' + t.reply));
+      if (!t.closed) {
+        const ta = el('textarea'); ta.placeholder = 'Note on how it was handled (optional)';
+        tk.append(ta, el('div', 'actions'));
+        tk.lastChild.append(btn('Close ticket', '', async () => { await post(`/api/admin/orders/${o.id}/cats/${i}/close`, { ticket: k, reply: ta.value }); loadOrder(o.id); }));
+      }
+      card.append(tk);
+    });
+
+    // versions, newest first
+    for (let v = c.versions.length - 1; v >= 0; v--) {
+      const ver = c.versions[v], row = el('div', 'ver');
+      row.append(el('b', '', `Version ${v + 1}`), document.createTextNode(` · ${fmt(ver.at)} · by ${ver.by}${ver.confidence ? ' · confidence ' + ver.confidence : ''}${ver.note ? ` · note: "${ver.note}"` : ''}`));
+      row.append(el('p', 'code', ver.code));
+      const acts = el('div', 'actions');
+      const cb = btn('Copy code', 'quiet', () => copy(cb, ver.code)); acts.append(cb);
+      acts.append(btn('Show', 'quiet', () => showCat(`${i}v${v}`, ver.spec)));
+      const det = el('details'); det.append(el('summary', 'small', 'Design JSON'), el('pre', '', JSON.stringify(ver.spec, null, 1)));
+      row.append(acts, det); card.append(row);
+    }
+
+    // fixes
+    const fix = el('details'); fix.append(el('summary', '', 'Fix this cat'));
+    const note = el('textarea'); note.placeholder = 'Remake with a note, e.g. "Left hind leg is white to the knee."';
+    const spec = el('textarea'); spec.placeholder = 'Or paste a design JSON here to add it as a new version'; spec.style.fontFamily = 'monospace';
+    const mail = el('label', 'small'); const mailBox = el('input'); mailBox.type = 'checkbox'; mail.append(mailBox, ' Email the customer the new code (needs email set up)');
+    const err = el('p', 'err');
+    const acts = el('div', 'actions');
+    acts.append(btn('Remake with note', '', async () => {
+      try { await post(`/api/admin/orders/${o.id}/cats/${i}/remake`, { note: note.value }); loadOrder(o.id); } catch (e) { err.textContent = e.message; }
+    }));
+    acts.append(btn('Add pasted design', '', async () => {
+      let s; try { s = JSON.parse(spec.value); } catch (e) { err.textContent = 'That design JSON does not parse.'; return; }
+      try { await post(`/api/admin/orders/${o.id}/cats/${i}/fix`, { spec: s, note: note.value || 'Fixed by hand', email: mailBox.checked }); loadOrder(o.id); } catch (e) { err.textContent = e.message; }
+    }));
+    acts.append(btn('Give 1 more change', 'quiet', async () => { await post(`/api/admin/orders/${o.id}/cats/${i}/changes`, { add: 1 }); loadOrder(o.id); }));
+    fix.append(note, spec, mail, acts, err);
+    card.append(fix);
+
+    const log = el('details'); log.append(el('summary', 'small', 'History'));
+    for (const e of c.log || []) log.append(el('div', 'log', `${fmt(e.at)} · ${e.what}${e.detail ? ': ' + e.detail : ''}`));
+    card.append(log);
+    return card;
+  }
+
+  async function route() {
+    if (!pw) { $('login').hidden = false; $('list').hidden = true; $('detail').hidden = true; return; }
+    const id = location.hash.slice(1);
+    try {
+      if (id) await loadOrder(id);
+      else { if (!all.length) await loadList(); else drawList(); }
+    } catch (e) {
+      if (e.status === 401) { pw = ''; try { sessionStorage.removeItem('pc-admin'); } catch (x) {} route(); return; }
+      $('detail').hidden = false; $('detail').textContent = e.message;
+    }
+  }
+  window.onhashchange = route;
+  $('zoom').onclick = () => $('zoom').close();
+  route();
+</script>
+</body>
+</html>

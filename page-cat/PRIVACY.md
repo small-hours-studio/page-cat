@@ -23,7 +23,7 @@ To decide where the cat can walk, Page Cat reads the size and position of elemen
 
 ## Custom cat orders
 
-If you order a custom cat on our order page, you upload photos of your cat, its name, and your email address. The photos are kept by our order service (hosted on Cloudflare) and sent to Anthropic's Claude AI, which makes your cat's design; Anthropic doesn't use them to train its models. The photos are deleted once you approve your cat, or within a few days if you don't finish paying. Your email address is used only for your receipt and your cat's code. Payment is handled by Stripe; we never see your card details. The cat code holds only the cat's name, colors and markings.
+If you order a custom cat on our order page, you upload photos of your cat, its name, and your email address. The photos are kept by our order service (hosted on Cloudflare) and sent to Anthropic's Claude AI, which makes your cat's design; Anthropic doesn't use them to train its models. We keep the photos for 30 days so you can compare them with your cat and we can fix it if something is wrong, then they're deleted automatically. If you don't finish paying, they're deleted within a few days. We keep a record of your order (your email, your cat's name and its designs and codes) so we can help if you lose a code or report a problem. Your email address is used only for your receipt and your cat's code. Payment is handled by Stripe; we never see your card details. The cat code holds only the cat's name, colors and markings.
 
 ## Contact
 

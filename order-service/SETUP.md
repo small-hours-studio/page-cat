@@ -5,7 +5,11 @@ How it fits together:
 1. **Order page** (`docs/order.html` on GitHub Pages): the customer picks 1-3 cats, adds photos and their email.
 2. **Order service** (this folder, a Cloudflare Worker): stores the photos, opens a Stripe Checkout, and when Stripe says it's paid, starts one job per cat.
 3. **Cat job** (GitHub Actions in a private repo): runs `page-cat/tools/catmaker/run_job.py`, which asks Claude Opus to design the cat from the photos (`make_cat.py`) and sends the design back.
-4. **Status page** (`docs/status.html`): the customer watches their cat walk around the page, asks for up to 2 changes, and approves. The order service then signs the cat code. Photos are deleted when every cat in the order is approved.
+4. **Making page** (`docs/making.html`): where the customer lands after paying, while the cats are made.
+5. **Your cat page** (`docs/status.html`): each cat next to the customer's photos, with its code (signed as soon as it's made). The customer can ask for up to 2 changes; each makes a new version with a new code. "Report a problem" opens a ticket.
+6. **Admin page** (`docs/admin.html`, password-protected): every order, buyer, photo, version, code and ticket. Remake a cat with a note, paste in a hand-fixed design, give extra changes, close tickets. `page-cat/tools/admin.py` does the same from the terminal.
+
+Records: orders are kept for good in KV. Photos are deleted 30 days after upload by a daily cron in the Worker.
 
 Costs: Cloudflare and GitHub free tiers cover this. Claude is about 15¢ per cat (estimate; each change is another call). Stripe takes about 2.9% + 30¢ per payment.
 
@@ -35,7 +39,7 @@ R2 (photo storage) has to be turned on once in the Cloudflare dashboard (R2 → 
 ```powershell
 npx -y wrangler@4.156.0 r2 bucket create page-cat-photos
 ```
-In the dashboard, open the bucket → Settings → Object lifecycle rules → add a rule deleting objects after 7 days. That's a backstop; photos are normally deleted as soon as an order is done.
+In the dashboard, open the bucket → Settings → Object lifecycle rules → add a rule deleting objects after 31 days. That's a backstop; the Worker's daily cron deletes photos after 30 days.
 
 ## 4. Private GitHub repo for the cat jobs
 Customer photos must never show up in a public repo's logs, so the job runs in a private repo.
@@ -60,6 +64,12 @@ npx -y wrangler@4.156.0 secret put GITHUB_TOKEN
 ```powershell
 npx -y wrangler@4.156.0 secret put JOB_SECRET
 ```
+The admin page password. Pick a long one (at least 12 characters) and keep it in your password manager:
+```powershell
+npx -y wrangler@4.156.0 secret put ADMIN_PASSWORD
+```
+For `tools/admin.py`, also save it in the file `.pagecat/admin-password` in your user folder (outside the repo).
+
 The signing key is a file, so pipe it in:
 ```powershell
 Get-Content "$HOME\.pagecat\signing-key.pem" -Raw | npx -y wrangler@4.156.0 secret put CAT_SIGNING_KEY
@@ -79,7 +89,7 @@ npx -y wrangler@4.156.0 secret put STRIPE_WEBHOOK_SECRET
 In `docs/config.js`, set `ORDER_API` to the Worker's address. Leave `ORDERS_OPEN` false for now. Commit and push.
 
 ## 8. Test order
-Open `https://small-hours-studio.github.io/page-cat/order.html`, order one cat with a real photo, and pay with Stripe's test card `4242 4242 4242 4242` (any future date, any CVC). You should land on the status page, see "Making…", and within a few minutes see your cat. Try a change and an approval, and paste the code into Page Cat.
+Open `https://small-hours-studio.github.io/page-cat/order.html`, order one cat with a real photo, and pay with Stripe's test card `4242 4242 4242 4242` (any future date, any CVC). You should land on the making page, and within a few minutes see your cat. Try a change and a ticket, paste the code into Page Cat, and open `admin.html` to see the order.
 
 If a cat says it hit a snag, the job's log is in the private repo's Actions tab.
 
